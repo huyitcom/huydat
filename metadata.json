@@ -1,5 +1,7 @@
 {
-  "name": "AI Photo Studio",
-  "description": "An AI-powered photo editing application that allows users to upload an image and provide a text prompt to modify it using the Gemini API.",
-  "requestFramePermissions": []
+  "name": "Huy Dat AI Studio 2",
+  "description": "Thêm profile nữ",
+  "requestFramePermissions": [
+    "camera"
+  ]
 }

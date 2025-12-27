@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface DownloadButtonProps {
@@ -31,7 +32,7 @@ export const DownloadButton: React.FC<DownloadButtonProps> = ({ imageUrl }) => {
   return (
     <button
       onClick={handleDownload}
-      className="absolute top-4 right-4 z-10 flex items-center bg-slate-800/80 text-white font-semibold py-2 px-4 border border-slate-600 rounded-lg shadow-lg transition-all backdrop-blur-sm hover:bg-purple-600 hover:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75"
+      className="absolute top-4 right-4 z-10 flex items-center bg-slate-800/80 text-white font-semibold py-2 px-4 border border-slate-600 rounded-lg shadow-lg transition-all backdrop-blur-sm hover:bg-cyan-600 hover:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-opacity-75"
       aria-label="Download edited image"
     >
       <DownloadIcon />
