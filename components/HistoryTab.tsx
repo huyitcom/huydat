@@ -61,14 +61,14 @@ export const HistoryTab: React.FC = () => {
               >
                 <img 
                     src={item.imageUrl} 
-                    alt={item.prompt} 
+                    alt="Generated image"
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
                     loading="lazy"
                 />
                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
               </div>
               <div className="p-4">
-                <div className="flex justify-between items-center mb-2">
+                <div className="flex justify-between items-center">
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
                         item.category === 'id' ? 'bg-cyan-900/50 text-cyan-200 border border-cyan-800' : 'bg-purple-900/50 text-purple-200 border border-purple-800'
                     }`}>
@@ -78,9 +78,6 @@ export const HistoryTab: React.FC = () => {
                         {new Date(item.timestamp).toLocaleDateString()}
                     </span>
                 </div>
-                <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed" title={item.prompt}>
-                  {item.prompt}
-                </p>
               </div>
             </div>
           ))}
