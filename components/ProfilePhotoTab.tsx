@@ -151,7 +151,7 @@ export const ProfilePhotoTab: React.FC = () => {
 
     setIsLoading(true);
     setError(null);
-    setEditedResults(null);
+    setEditedResults([]); // Initialize empty array
 
     try {
       const basePrompt = prompt.trim();
@@ -177,34 +177,50 @@ export const ProfilePhotoTab: React.FC = () => {
       const personBase64Data = originalImage.base64.split(',')[1];
       const personMimeType = originalImage.file.type;
 
-      const promises = promptsToRun.map((p) =>
-        editImageWithGemini(
-          personBase64Data,
-          personMimeType,
-          p.prompt
-        )
-      );
+      // Sequential Execution to avoid Rate Limits
+      const currentResults: EditedImageResult[] = [];
 
-      const results = await Promise.all(promises);
+      for (const p of promptsToRun) {
+        try {
+            const result = await editImageWithGemini(
+                personBase64Data,
+                personMimeType,
+                p.prompt
+            );
 
-      const finalResults: EditedImageResult[] = results.map((result, index) => ({
-        ...result,
-        title: promptsToRun[index].title,
-        prompt: promptsToRun[index].prompt,
-      }));
-
-      setEditedResults(finalResults);
-
-      // Save to history
-      finalResults.forEach(result => {
-        if (result.imageUrl) {
-            addToHistory({
-                imageUrl: result.imageUrl,
-                prompt: result.prompt,
-                category: 'profile'
-            });
+            const finalResult: EditedImageResult = {
+                ...result,
+                title: p.title,
+                prompt: p.prompt
+            };
+            
+            currentResults.push(finalResult);
+            setEditedResults([...currentResults]); // Update UI incrementally
+            
+            // Save to history
+            if (finalResult.imageUrl) {
+                addToHistory({
+                    imageUrl: finalResult.imageUrl,
+                    prompt: finalResult.prompt,
+                    category: 'profile'
+                });
+            }
+        } catch (e) {
+             console.error(`Failed to generate ${p.title}:`, e);
+             const failedResult: EditedImageResult = {
+                imageUrl: null,
+                text: null,
+                title: p.title,
+                prompt: p.prompt
+            };
+            currentResults.push(failedResult);
+            setEditedResults([...currentResults]);
         }
-      });
+      }
+      
+      if (currentResults.every(r => !r.imageUrl)) {
+          throw new Error("All generations failed. Please try again later.");
+      }
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';

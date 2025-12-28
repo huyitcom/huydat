@@ -69,7 +69,7 @@ export const IdPhotoTab: React.FC = () => {
 
     setIsLoading(true);
     setError(null);
-    setEditedResults(null);
+    setEditedResults([]); // Initialize empty array to show results as they come in
 
     try {
       let clothingPrompt = '';
@@ -134,36 +134,53 @@ export const IdPhotoTab: React.FC = () => {
       const clothingBase64Data = clothingOption === 'Uploaded clothes' && clothingImage.base64 ? clothingImage.base64.split(',')[1] : undefined;
       const clothingMimeType = clothingOption === 'Uploaded clothes' && clothingImage.file ? clothingImage.file.type : undefined;
 
-
-      const promises = promptsToRun.map(p => 
-        editImageWithGemini(
-          personBase64Data, 
-          personMimeType, 
-          p.prompt, 
-          clothingBase64Data,
-          clothingMimeType
-        ));
-
-      const results = await Promise.all(promises);
+      // Sequential Execution to avoid Rate Limits (429)
+      const currentResults: EditedImageResult[] = [];
       
-      const finalResults: EditedImageResult[] = results.map((result, index) => ({
-        ...result,
-        title: promptsToRun[index].title,
-        prompt: promptsToRun[index].prompt,
-      }));
-
-      setEditedResults(finalResults);
-
-      // Save to history
-      finalResults.forEach(result => {
-        if (result.imageUrl) {
-            addToHistory({
-                imageUrl: result.imageUrl,
-                prompt: result.prompt,
-                category: 'id'
-            });
+      for (const p of promptsToRun) {
+        try {
+            const result = await editImageWithGemini(
+                personBase64Data, 
+                personMimeType, 
+                p.prompt, 
+                clothingBase64Data,
+                clothingMimeType
+            );
+            
+            const finalResult: EditedImageResult = {
+                ...result,
+                title: p.title,
+                prompt: p.prompt
+            };
+            
+            currentResults.push(finalResult);
+            setEditedResults([...currentResults]); // Update UI immediately
+            
+            // Save to history
+            if (finalResult.imageUrl) {
+                addToHistory({
+                    imageUrl: finalResult.imageUrl,
+                    prompt: finalResult.prompt,
+                    category: 'id'
+                });
+            }
+        } catch (e) {
+            console.error(`Failed to generate ${p.title}:`, e);
+            // Optionally add a failed result to the UI so user knows it failed
+             const failedResult: EditedImageResult = {
+                imageUrl: null,
+                text: null,
+                title: p.title,
+                prompt: p.prompt
+            };
+            currentResults.push(failedResult);
+            setEditedResults([...currentResults]);
         }
-      });
+      }
+      
+      if (currentResults.every(r => !r.imageUrl)) {
+          throw new Error("All generations failed. Please try again later or check your connection.");
+      }
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
