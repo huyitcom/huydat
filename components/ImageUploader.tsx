@@ -5,6 +5,8 @@ interface ImageUploaderProps {
   onFileChange: (file: File | null) => void;
   previewUrl: string | null;
   showCameraButton?: boolean;
+  hideLabel?: boolean;
+  borderless?: boolean;
 }
 
 const CameraIcon: React.FC = () => (
@@ -14,7 +16,7 @@ const CameraIcon: React.FC = () => (
 );
 
 
-export const ImageUploader: React.FC<ImageUploaderProps> = ({ onFileChange, previewUrl, showCameraButton }) => {
+export const ImageUploader: React.FC<ImageUploaderProps> = ({ onFileChange, previewUrl, showCameraButton, hideLabel, borderless }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -148,11 +150,13 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onFileChange, prev
 
 
   return (
-    <div className="space-y-2">
-       <div className="flex justify-between items-center">
-        <label className="block text-sm font-medium text-slate-300">
-          1. Upload Your Image
-        </label>
+    <div className="space-y-2 h-full flex flex-col">
+       <div className={`flex items-center ${hideLabel ? 'justify-end' : 'justify-between'}`}>
+        {!hideLabel && (
+          <label className="block text-sm font-medium text-slate-300">
+            1. Tải ảnh của bạn lên
+          </label>
+        )}
         {showCameraButton && (
           <button
             type="button"
@@ -160,7 +164,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onFileChange, prev
             className="inline-flex items-center rounded bg-slate-600/50 px-2.5 py-1.5 text-xs font-semibold text-slate-300 shadow-sm hover:bg-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500 transition-colors"
           >
             <CameraIcon />
-            Use Camera
+            Dùng máy ảnh
           </button>
         )}
       </div>
@@ -169,7 +173,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onFileChange, prev
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`mt-1 flex justify-center items-center w-full h-64 px-6 pt-5 pb-6 border-2 border-slate-600 border-dashed rounded-lg cursor-pointer hover:border-cyan-500 transition-all ${isDragging ? 'border-cyan-500 bg-slate-800/50 scale-105' : ''}`}
+        className={`mt-1 flex-1 flex justify-center items-center w-full min-h-[16rem] px-6 pt-5 pb-6 ${borderless ? '' : 'border-2 border-slate-600 border-dashed rounded-lg'} cursor-pointer hover:border-cyan-500 transition-all ${isDragging ? 'border-cyan-500 bg-slate-800/50 scale-105' : ''}`}
       >
         {previewUrl ? (
           <img src={previewUrl} alt="Preview" className="max-h-full max-w-full object-contain rounded-md" />
@@ -190,9 +194,9 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onFileChange, prev
               />
             </svg>
             <div className="flex text-sm text-slate-400">
-              <p className="pl-1">Click to upload or drag and drop</p>
+              <p className="pl-1">Nhấp để tải lên hoặc kéo thả</p>
             </div>
-            <p className="text-xs text-slate-500">PNG, JPG, GIF up to 10MB</p>
+            <p className="text-xs text-slate-500">PNG, JPG, GIF tối đa 10MB</p>
           </div>
         )}
       </div>
@@ -217,13 +221,13 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onFileChange, prev
                     )}
                     {countdown === 0 && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-md">
-                            <span className="text-white text-4xl font-bold drop-shadow-lg">Capturing...</span>
+                            <span className="text-white text-4xl font-bold drop-shadow-lg">Đang chụp...</span>
                         </div>
                     )}
                 </div>
                 <div className="mt-4 flex justify-center">
                     <button onClick={handleCancelCamera} className="w-full justify-center items-center rounded-md bg-slate-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-slate-500">
-                        Cancel
+                        Hủy
                     </button>
                 </div>
             </div>

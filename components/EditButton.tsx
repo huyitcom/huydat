@@ -10,8 +10,8 @@ interface EditButtonProps {
   buttonText?: string;
 }
 
-export const EditButton: React.FC<EditButtonProps> = ({ onClick, isLoading, disabled, label = "4. Generate", buttonText = "Apply Edit" }) => {
-  const loadingText = buttonText === "Apply Edit" ? "Editing..." : "Generating...";
+export const EditButton: React.FC<EditButtonProps> = ({ onClick, isLoading, disabled, label = "4. Tạo ảnh", buttonText = "Áp dụng" }) => {
+  const loadingText = buttonText === "Áp dụng" ? "Đang chỉnh sửa..." : "Đang tạo...";
   
   return (
     <div className="space-y-2">

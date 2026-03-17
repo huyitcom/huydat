@@ -13,7 +13,7 @@ export const HistoryTab: React.FC = () => {
   }, []);
 
   const handleClear = () => {
-    if (confirm('Are you sure you want to clear your history? This cannot be undone.')) {
+    if (confirm('Bạn có chắc chắn muốn xóa lịch sử không? Không thể hoàn tác hành động này.')) {
         clearHistory();
         setHistory([]);
     }
@@ -31,15 +31,15 @@ export const HistoryTab: React.FC = () => {
 
       <div className="flex justify-between items-center bg-slate-800/50 p-6 rounded-2xl border border-slate-700">
         <div>
-            <h2 className="text-2xl font-bold text-slate-100">Creation History</h2>
-            <p className="text-slate-400 text-sm mt-1">Images are saved locally in your browser (Max 20)</p>
+            <h2 className="text-2xl font-bold text-slate-100">Lịch sử tạo ảnh</h2>
+            <p className="text-slate-400 text-sm mt-1">Hình ảnh được lưu cục bộ trong trình duyệt của bạn (Tối đa 20)</p>
         </div>
         {history.length > 0 && (
             <button
                 onClick={handleClear}
                 className="px-4 py-2 text-sm text-red-300 hover:text-red-200 border border-red-900/50 hover:bg-red-900/20 rounded-md transition-colors"
             >
-                Clear History
+                Xóa lịch sử
             </button>
         )}
       </div>
@@ -49,7 +49,7 @@ export const HistoryTab: React.FC = () => {
           <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <p>No history yet. Generate some images to see them here!</p>
+          <p>Chưa có lịch sử. Hãy tạo một vài hình ảnh để xem ở đây!</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -61,7 +61,7 @@ export const HistoryTab: React.FC = () => {
               >
                 <img 
                     src={item.imageUrl} 
-                    alt="Generated image"
+                    alt="Ảnh đã tạo"
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
                     loading="lazy"
                 />

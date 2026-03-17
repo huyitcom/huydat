@@ -14,8 +14,8 @@ export const PromptInput: React.FC<PromptInputProps> = ({
   value, 
   onChange, 
   disabled, 
-  label = "4. Review & Edit Prompt", 
-  placeholder = "e.g., 'Add a cute party hat to the cat' or 'Change the background to a snowy mountain'", 
+  label = "4. Xem lại & Sửa mô tả", 
+  placeholder = "VD: 'Thêm mũ dự tiệc dễ thương cho mèo' hoặc 'Đổi nền thành ngọn núi tuyết'", 
   rows = 6 
 }) => {
   return (

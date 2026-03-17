@@ -25,7 +25,7 @@ export const ProEditTab: React.FC = () => {
         setEditedResults(null);
         setError(null);
       };
-      reader.onerror = () => setError('Failed to read the image file.');
+      reader.onerror = () => setError('Không thể đọc tệp hình ảnh.');
       reader.readAsDataURL(file);
     } else {
       setOriginalImage({ file: null, base64: null });
@@ -41,16 +41,16 @@ export const ProEditTab: React.FC = () => {
 
   const handleGenerate = useCallback(async () => {
     if (!originalImage.base64 || !originalImage.file) {
-      setError('Please upload an image first.');
+      setError('Vui lòng tải ảnh lên trước.');
       return;
     }
     if (!prompt.trim()) {
-      setError('Please enter a description for the edit.');
+      setError('Vui lòng nhập mô tả để chỉnh sửa.');
       return;
     }
     const maskBase64 = maskerRef.current?.getMaskAsBase64();
     if (!maskBase64) {
-      setError('Could not generate the mask.');
+      setError('Không thể tạo vùng chọn (mask).');
       return;
     }
 
@@ -71,14 +71,14 @@ export const ProEditTab: React.FC = () => {
       
       const finalResult: EditedImageResult = {
           ...result,
-          title: 'Edited Image',
+          title: 'Ảnh đã chỉnh sửa',
           prompt: prompt
       }
       setEditedResults([finalResult]);
 
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
-      setError(`Failed to edit image: ${errorMessage}`);
+      const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi không xác định.';
+      setError(`Chỉnh sửa ảnh thất bại: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
@@ -99,14 +99,14 @@ export const ProEditTab: React.FC = () => {
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
       {/* Controls Column */}
       <div className="bg-slate-800/50 p-6 rounded-2xl shadow-lg border border-slate-700 h-fit">
-        <h2 className="text-xl font-bold mb-4 text-slate-200">Upload image for Inpaint edit</h2>
+        <h2 className="text-xl font-bold mb-4 text-slate-200">Tải ảnh lên để chỉnh sửa Inpaint</h2>
         <div className="space-y-6">
             <div className="relative">
                 <ImageMasker ref={maskerRef} src={originalImage.base64} brushSize={brushSize} />
                 <button 
                     onClick={removeImage}
                     className="absolute top-2 right-2 z-10 w-8 h-8 flex items-center justify-center bg-black/50 text-white rounded-full hover:bg-black/80 transition-colors"
-                    aria-label="Remove image"
+                    aria-label="Xóa ảnh"
                 >
                     &times;
                 </button>
@@ -114,7 +114,7 @@ export const ProEditTab: React.FC = () => {
           
             <div className="p-4 bg-slate-700/50 rounded-lg">
                 <div className="flex justify-between items-center mb-2">
-                    <label htmlFor="brush-size" className="text-sm font-medium text-slate-300">Brush size: {brushSize}</label>
+                    <label htmlFor="brush-size" className="text-sm font-medium text-slate-300">Kích thước cọ: {brushSize}</label>
                 </div>
                 <input
                     id="brush-size"
@@ -127,15 +127,15 @@ export const ProEditTab: React.FC = () => {
                     disabled={isLoading}
                 />
                 <div className="flex justify-end space-x-2 mt-3">
-                    <button onClick={() => maskerRef.current?.undo()} disabled={isLoading} className="px-4 py-1 text-sm border border-slate-600 text-slate-300 rounded-md hover:bg-slate-700">Undo</button>
-                    <button onClick={() => maskerRef.current?.clear()} disabled={isLoading} className="px-4 py-1 text-sm border border-slate-600 text-slate-300 rounded-md hover:bg-slate-700">Clear selection</button>
+                    <button onClick={() => maskerRef.current?.undo()} disabled={isLoading} className="px-4 py-1 text-sm border border-slate-600 text-slate-300 rounded-md hover:bg-slate-700">Hoàn tác</button>
+                    <button onClick={() => maskerRef.current?.clear()} disabled={isLoading} className="px-4 py-1 text-sm border border-slate-600 text-slate-300 rounded-md hover:bg-slate-700">Xóa vùng chọn</button>
                 </div>
             </div>
 
             <div>
                 <PromptInput
-                    label="Describe the area to edit"
-                    placeholder="e.g., 'a beautiful castle on a hill'"
+                    label="Mô tả khu vực cần chỉnh sửa"
+                    placeholder="VD: 'một lâu đài đẹp trên đồi'"
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     disabled={isLoading}
@@ -144,7 +144,7 @@ export const ProEditTab: React.FC = () => {
           
             <EditButton
                 label=""
-                buttonText="Edit Image"
+                buttonText="Chỉnh sửa ảnh"
                 onClick={handleGenerate}
                 isLoading={isLoading}
                 disabled={!originalImage.file || !prompt.trim()}
@@ -166,7 +166,7 @@ export const ProEditTab: React.FC = () => {
         ) : (
             <div className="w-full bg-gray-900/50 p-6 rounded-2xl flex items-center justify-center min-h-[500px]">
                 <div className="text-center text-slate-500">
-                    <p>Your edited image will appear here.</p>
+                    <p>Ảnh đã chỉnh sửa của bạn sẽ xuất hiện ở đây.</p>
                 </div>
             </div>
         )}

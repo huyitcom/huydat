@@ -22,7 +22,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSuccess }) => {
       }
       onSuccess();
     } else {
-      setError('Incorrect password. Please try again.');
+      setError('Mật khẩu không đúng. Vui lòng thử lại.');
       setPassword('');
     }
   };
@@ -36,7 +36,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSuccess }) => {
                 AI Photo Studio
             </h1>
             <p className="mt-2 text-lg text-slate-400">
-                Please enter the password to continue.
+                Vui lòng nhập mật khẩu để tiếp tục.
             </p>
         </div>
         
@@ -48,7 +48,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSuccess }) => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter security password"
+              placeholder="Nhập mật khẩu bảo mật"
               className="block w-full rounded-md border-0 bg-slate-700/50 py-3 px-4 text-slate-200 shadow-sm ring-1 ring-inset ring-slate-600 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-cyan-500 sm:text-sm sm:leading-6 transition text-center"
               aria-describedby="password-error"
               autoFocus
@@ -65,7 +65,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSuccess }) => {
             type="submit"
             className="flex w-full justify-center items-center rounded-md bg-cyan-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-cyan-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            Enter
+            Vào
           </button>
         </form>
       </div>

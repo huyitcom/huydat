@@ -14,8 +14,8 @@ export const PreserveFaceToggle: React.FC<PreserveFaceToggleProps> = ({
   checked, 
   onChange, 
   disabled, 
-  label = "Preserve Face Structure", 
-  description = "Attempts to keep the original facial features intact.",
+  label = "Giữ cấu trúc khuôn mặt", 
+  description = "Cố gắng giữ nguyên các đặc điểm trên khuôn mặt.",
   id = "preserve-face"
 }) => {
   return (

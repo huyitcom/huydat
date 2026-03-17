@@ -21,10 +21,10 @@ export const StudioLightButton: React.FC<StudioLightButtonProps> = ({ onClick, d
         onClick={onClick}
         disabled={disabled}
         className="inline-flex items-center rounded bg-slate-600/50 px-2.5 py-1.5 text-xs font-semibold text-slate-300 shadow-sm hover:bg-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        aria-label="Add professional studio lighting effect to the prompt"
+        aria-label="Thêm hiệu ứng ánh sáng studio chuyên nghiệp vào mô tả"
       >
         <LightbulbIcon />
-        Add Studio Light
+        Thêm ánh sáng Studio
       </button>
     </div>
   );

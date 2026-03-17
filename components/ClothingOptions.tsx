@@ -9,7 +9,7 @@ interface ClothingOptionsProps {
   clothingPreviewUrl: string | null;
 }
 
-const presetOptions = ['White shirt', 'Light cyan shirt', 'Light pink shirt', 'Business suit', 'White Ao Dai', 'Light cyan Ao Dai', 'Light pink Ao Dai'];
+const presetOptions = ['Áo sơ mi trắng', 'Áo sơ mi xanh nhạt', 'Áo sơ mi hồng nhạt', 'Áo vest', 'Áo dài trắng', 'Áo dài xanh nhạt', 'Áo dài hồng nhạt'];
 
 export const ClothingOptions: React.FC<ClothingOptionsProps> = ({ selected, onChange, disabled, onClothingFileChange, clothingPreviewUrl }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -28,7 +28,7 @@ export const ClothingOptions: React.FC<ClothingOptionsProps> = ({ selected, onCh
   return (
     <div className="space-y-2">
       <label className="block text-sm font-medium text-slate-300">
-        2. Choose Clothing
+        2. Chọn trang phục
       </label>
       <div className="grid grid-cols-2 gap-2">
         {presetOptions.map((option) => (
@@ -51,14 +51,14 @@ export const ClothingOptions: React.FC<ClothingOptionsProps> = ({ selected, onCh
           onClick={handleUploadAreaClick}
           className={`px-4 py-2 rounded-md transition-colors flex items-center justify-center text-center h-12
             ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-            ${selected === 'Uploaded clothes'
+            ${selected === 'Áo tải lên'
               ? 'bg-cyan-600 text-white shadow-md ring-2 ring-cyan-500 ring-offset-2 ring-offset-black'
               : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/70'
             }`}
           role="button"
           tabIndex={disabled ? -1 : 0}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleUploadAreaClick();}}
-          aria-label="Upload a clothing image"
+          aria-label="Tải lên hình ảnh trang phục"
         >
           <input
             ref={fileInputRef}
@@ -68,10 +68,10 @@ export const ClothingOptions: React.FC<ClothingOptionsProps> = ({ selected, onCh
             onChange={handleFileChange}
             disabled={disabled}
           />
-          {clothingPreviewUrl && selected === 'Uploaded clothes' ? (
-            <img src={clothingPreviewUrl} alt="Uploaded clothes" className="h-full py-1 object-contain" />
+          {clothingPreviewUrl && selected === 'Áo tải lên' ? (
+            <img src={clothingPreviewUrl} alt="Áo tải lên" className="h-full py-1 object-contain" />
           ) : (
-            <span className="text-sm font-medium">+ Upload</span>
+            <span className="text-sm font-medium">+ Tải lên</span>
           )}
         </div>
       </div>

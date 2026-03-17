@@ -1,29 +1,112 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { ImageUploader } from './ImageUploader';
 import { EditButton } from './EditButton';
 import { ResultDisplay } from './ResultDisplay';
 import { ErrorMessage } from './ErrorMessage';
-import { PreserveFaceToggle } from './PreserveFaceToggle';
-import { ClothingOptions } from './ClothingOptions';
+import { IdPhotoConfigPanel } from './IdPhotoConfigPanel';
 import { editImageWithGemini } from '../services/geminiService';
 import { addToHistory } from '../services/historyService';
 import type { EditedImageResult } from '../types';
+
+const cropImageToAspectRatio = (base64: string, targetRatio: number, zoom: number = 1, panY: number = 0): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Could not get canvas context'));
+        return;
+      }
+
+      const imgRatio = img.width / img.height;
+      let baseWidth = img.width;
+      let baseHeight = img.height;
+
+      if (imgRatio > targetRatio) {
+        // Image is wider than target
+        baseWidth = img.height * targetRatio;
+      } else {
+        // Image is taller than target
+        baseHeight = img.width / targetRatio;
+      }
+
+      // Apply zoom
+      const sWidth = baseWidth / zoom;
+      const sHeight = baseHeight / zoom;
+
+      // Center X
+      const sx = (img.width - sWidth) / 2;
+      
+      // Center Y
+      const sy_center = (img.height - sHeight) / 2;
+      
+      // Pan Y: panY is from -100 (top) to 100 (bottom)
+      const maxPan = sy_center;
+      let sy = sy_center + (panY / 100) * maxPan;
+      
+      // Clamp sy to ensure we don't crop outside the image
+      sy = Math.max(0, Math.min(sy, img.height - sHeight));
+
+      canvas.width = sWidth;
+      canvas.height = sHeight;
+
+      ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
+      resolve(canvas.toDataURL('image/jpeg', 0.95));
+    };
+    img.onerror = reject;
+    img.src = base64;
+  });
+};
 
 export const IdPhotoTab: React.FC = () => {
   const [originalImage, setOriginalImage] = useState<{ file: File | null; base64: string | null }>({
     file: null,
     base64: null,
   });
-  const [clothingImage, setClothingImage] = useState<{ file: File | null; base64: string | null }>({
-    file: null,
-    base64: null,
-  });
-  const [clothingOption, setClothingOption] = useState<string>('White shirt');
-  const [preserveFace, setPreserveFace] = useState<boolean>(true);
   const [editedResults, setEditedResults] = useState<EditedImageResult[] | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [sizeOption, setSizeOption] = useState<string>('5x5 cm');
+  const [appliedSizeOption, setAppliedSizeOption] = useState<string>('5x5 cm');
+  const [bgColor, setBgColor] = useState<string>('white');
+  const [clothingOption, setClothingOption] = useState<string>('Sơ Mi Nam');
+  const [skinSmooth, setSkinSmooth] = useState<number>(0);
+  const [removeBlemishes, setRemoveBlemishes] = useState<boolean>(false);
+  const [balanceFacialFeatures, setBalanceFacialFeatures] = useState<boolean>(false);
+  const [imageSize, setImageSize] = useState<string>('2K');
+  const [manualPrompt, setManualPrompt] = useState<string>('');
+  const [useManualPrompt, setUseManualPrompt] = useState<boolean>(false);
+  
+  const [rawAiImage, setRawAiImage] = useState<string | null>(null);
+  const [faceZoom, setFaceZoom] = useState<number>(1.0);
+  const [verticalPan, setVerticalPan] = useState<number>(0);
+
+  // Interactive cropping effect
+  useEffect(() => {
+    if (!rawAiImage) return;
+
+    let targetRatio = 3 / 4;
+    switch (appliedSizeOption) {
+      case '5x5 cm': targetRatio = 1 / 1; break;
+      case '2x3 cm': targetRatio = 2 / 3; break;
+      case '3x4 cm': targetRatio = 3 / 4; break;
+      case '4x6 cm': targetRatio = 4 / 6; break;
+      case '3.5x4.5 cm': targetRatio = 3.5 / 4.5; break;
+      case '3.3x4.8 cm': targetRatio = 3.3 / 4.8; break;
+    }
+
+    cropImageToAspectRatio(rawAiImage, targetRatio, faceZoom, verticalPan)
+      .then(cropped => {
+        setEditedResults(prev => {
+          if (!prev || prev.length === 0) return prev;
+          return [{ ...prev[0], imageUrl: cropped }];
+        });
+      })
+      .catch(err => console.error("Error re-cropping image:", err));
+  }, [rawAiImage, appliedSizeOption, faceZoom, verticalPan]);
 
   const handleFileChange = (file: File | null) => {
     if (file) {
@@ -34,7 +117,7 @@ export const IdPhotoTab: React.FC = () => {
         setError(null);
       };
       reader.onerror = () => {
-        setError('Failed to read the image file.');
+        setError('Không thể đọc tệp hình ảnh.');
       };
       reader.readAsDataURL(file);
     } else {
@@ -42,181 +125,265 @@ export const IdPhotoTab: React.FC = () => {
     }
   };
 
-  const handleClothingFileChange = (file: File | null) => {
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setClothingImage({ file, base64: reader.result as string });
-        setClothingOption('Uploaded clothes');
-      };
-       reader.onerror = () => {
-        setError('Failed to read the clothing image file.');
-      };
-      reader.readAsDataURL(file);
-    } else {
-      setClothingImage({ file: null, base64: null });
-       if (clothingOption === 'Uploaded clothes') {
-        setClothingOption('White shirt'); // Revert to default
-      }
-    }
-  };
-
   const handleEdit = useCallback(async () => {
     if (!originalImage.base64 || !originalImage.file) {
-      setError('Please upload an image first.');
+      setError('Vui lòng tải ảnh lên trước.');
       return;
     }
 
     setIsLoading(true);
     setError(null);
     setEditedResults(null);
+    setAppliedSizeOption(sizeOption);
 
     try {
       let clothingPrompt = '';
-      if (clothingOption === 'Uploaded clothes' && clothingImage.file && clothingImage.base64) {
-        clothingPrompt = 'Replace the outfit with the one from the second image provided.';
-      } else {
-        switch (clothingOption) {
-          case 'Business suit':
-            clothingPrompt = 'Replace the outfit with a professional business suit, suitable for a corporate headshot.';
-            break;
-          case 'White Ao Dai':
-            clothingPrompt = 'Replace the outfit with an elegant, traditional White Ao Dai.';
-            break;
-          case 'Light cyan shirt':
-            clothingPrompt = 'Replace the outfit with a light cyan collared shirt in a formal style, suitable for a CV or job application photo.';
-            break;
-          case 'Light pink shirt':
-            clothingPrompt = 'Replace the outfit with a light pink collared shirt in a formal style, suitable for a CV or job application photo.';
-            break;
-          case 'Light cyan Ao Dai':
-            clothingPrompt = 'Replace the outfit with an elegant, traditional Light Cyan Ao Dai.';
-            break;
-          case 'Light pink Ao Dai':
-            clothingPrompt = 'Replace the outfit with an elegant, traditional Light Pink Ao Dai.';
-            break;
-          case 'White shirt':
-          default:
-            clothingPrompt = 'Replace the outfit with a white collared shirt in a formal style, suitable for a CV or job application photo.';
-            break;
-        }
+      switch (clothingOption) {
+        case 'Giữ Nguyên':
+          clothingPrompt = 'Keep the original clothing.';
+          break;
+        case 'Vest Nam (Đen)':
+          clothingPrompt = 'Replace the outfit with a black professional business suit for men.';
+          break;
+        case 'Vest Nữ':
+          clothingPrompt = 'Replace the outfit with a professional business suit for women.';
+          break;
+        case 'Sơ Mi Nam':
+          clothingPrompt = 'Replace the outfit with a formal button-down shirt for men.';
+          break;
+        case 'Sơ Mi Nữ':
+          clothingPrompt = 'Replace the outfit with a formal button-down shirt for women.';
+          break;
+        case 'Polo Trắng':
+          clothingPrompt = 'Replace the outfit with a white polo shirt.';
+          break;
+        case 'Polo Đen':
+          clothingPrompt = 'Replace the outfit with a black polo shirt.';
+          break;
+        case 'Thun Trắng':
+          clothingPrompt = 'Replace the outfit with a plain white t-shirt.';
+          break;
       }
 
+      let bgPrompt = '';
+      switch (bgColor) {
+        case 'white': bgPrompt = 'solid white background'; break;
+        case 'blue': bgPrompt = 'solid blue background'; break;
+        case 'black': bgPrompt = 'solid black background'; break;
+        case 'gray': bgPrompt = 'solid gray background'; break;
+        case 'dark-gray': bgPrompt = 'solid dark gray background'; break;
+        case 'dark-blue': bgPrompt = 'solid dark blue background'; break;
+        case 'light-pink': bgPrompt = 'solid light pink background'; break;
+      }
 
-      let promptsToRun: { title: string; prompt: string }[] = [];
+      let sizePrompt = '';
+      let geminiAspectRatio = '3:4';
+      let targetRatio = 3 / 4;
 
-      if (preserveFace) {
-        promptsToRun = [
-          {
-            title: 'Original Face',
-            prompt: `Edit the photo to have a clean, solid white background. Keep the original clothing. Set the frame to a 4x6 aspect ratio. IMPORTANT: Keep the original body posture and posing straight, do not rotate the body. The face, lighting, and shadows from the original photo must be preserved 100% identically.`
-          },
-          {
-            title: 'Studio Lighting',
-            prompt: `Edit the photo into a professional picture with a solid white background. ${clothingPrompt} Set the frame to a 4x6 aspect ratio. Relight the entire image with professional studio lighting to create a high-quality look with balanced light and soft shadows. IMPORTANT: Keep the original body posture and posing straight, do not rotate the body. The face structure and features must be preserved 100% identically to the original photo; do not apply any retouching.`
-          },
-          {
-            title: 'Face Retouch',
-            prompt: `Edit the photo into a professional headshot with a solid white background. ${clothingPrompt} Set the frame to a 4x6 aspect ratio. Relight the entire image with professional studio lighting. Apply professional, magazine-style face retouching, including skin smoothing, blemish removal, and subtle light and shadow enhancement on the face to make the features pop. IMPORTANT: Keep the original body posture and posing straight, do not rotate the body. The person must remain clearly identifiable, preserving their core identity.`
-          }
-        ];
+      switch (sizeOption) {
+        case '5x5 cm':
+          sizePrompt = 'Set the frame to a 1x1 aspect ratio.';
+          geminiAspectRatio = '1:1';
+          targetRatio = 1 / 1;
+          break;
+        case '2x3 cm': 
+          sizePrompt = 'Set the frame to a 2x3 aspect ratio.'; 
+          geminiAspectRatio = '3:4';
+          targetRatio = 2 / 3;
+          break;
+        case '3x4 cm': 
+          sizePrompt = 'Set the frame to a 3x4 aspect ratio.'; 
+          geminiAspectRatio = '3:4';
+          targetRatio = 3 / 4;
+          break;
+        case '4x6 cm': 
+          sizePrompt = 'Set the frame to a 4x6 aspect ratio.'; 
+          geminiAspectRatio = '3:4';
+          targetRatio = 4 / 6;
+          break;
+        case '3.5x4.5 cm': 
+          sizePrompt = 'Set the frame to a 3.5x4.5 aspect ratio.'; 
+          geminiAspectRatio = '3:4';
+          targetRatio = 3.5 / 4.5;
+          break;
+        case '3.3x4.8 cm': 
+          sizePrompt = 'Set the frame to a 3.3x4.8 aspect ratio.'; 
+          geminiAspectRatio = '3:4';
+          targetRatio = 3.3 / 4.8;
+          break;
+      }
+
+      let retouchPrompt = '';
+      if (skinSmooth > 0) {
+        retouchPrompt += ` Apply skin smoothing at ${skinSmooth}% intensity.`;
+      }
+      if (removeBlemishes) {
+        retouchPrompt += ` Remove acne and blemishes.`;
+      }
+      if (balanceFacialFeatures) {
+        retouchPrompt += ` Ensure perfect facial symmetry. Align the eyes horizontally so they are on the exact same level. Straighten the nose so it is perfectly vertical and centered. Align the mouth horizontally and center it under the nose. Fix any asymmetrical facial features to make the left and right sides of the face perfectly balanced.`;
+      }
+
+      let prompt = '';
+      if (useManualPrompt && manualPrompt.trim() !== '') {
+        prompt = manualPrompt;
       } else {
-        promptsToRun = [
-          {
-            title: 'Edited Image',
-            prompt: `Edit the photo into a professional headshot with a solid white background. ${clothingPrompt} Set the frame to a 4x6 aspect ratio. Relight the entire image with professional studio lighting. Apply professional face retouching.`
-          }
-        ];
+        prompt = `Edit the photo into a professional headshot with a ${bgPrompt}. ${clothingPrompt} ${sizePrompt} Relight the entire image with professional studio lighting.${retouchPrompt} IMPORTANT: Keep the original body posture and posing straight, do not rotate the body. The person must remain clearly identifiable, preserving their core identity. CRITICAL FRAMING INSTRUCTION: This is an official passport/visa photo. Ensure the head and shoulders are clearly visible. Leave some space above the head and around the shoulders to allow for cropping. The face should be centered.`;
       }
 
       const personBase64Data = originalImage.base64.split(',')[1];
       const personMimeType = originalImage.file.type;
-      const clothingBase64Data = clothingOption === 'Uploaded clothes' && clothingImage.base64 ? clothingImage.base64.split(',')[1] : undefined;
-      const clothingMimeType = clothingOption === 'Uploaded clothes' && clothingImage.file ? clothingImage.file.type : undefined;
 
+      const result = await editImageWithGemini(
+        personBase64Data, 
+        personMimeType, 
+        prompt,
+        geminiAspectRatio,
+        undefined,
+        undefined,
+        imageSize
+      );
 
-      const promises = promptsToRun.map(p => 
-        editImageWithGemini(
-          personBase64Data, 
-          personMimeType, 
-          p.prompt, 
-          clothingBase64Data,
-          clothingMimeType
-        ));
-
-      const results = await Promise.all(promises);
-      
-      const finalResults: EditedImageResult[] = results.map((result, index) => ({
-        ...result,
-        title: promptsToRun[index].title,
-        prompt: promptsToRun[index].prompt,
-      }));
-
-      setEditedResults(finalResults);
-
-      // Save to history
-      finalResults.forEach(result => {
-        if (result.imageUrl) {
-            addToHistory({
-                imageUrl: result.imageUrl,
-                prompt: result.prompt,
-                category: 'id'
-            });
+      if (result.imageUrl) {
+        setRawAiImage(result.imageUrl);
+        try {
+          const croppedBase64 = await cropImageToAspectRatio(result.imageUrl, targetRatio, faceZoom, verticalPan);
+          result.imageUrl = croppedBase64;
+        } catch (cropErr) {
+          console.error("Error cropping image:", cropErr);
         }
-      });
+      }
+
+      const finalResult: EditedImageResult = {
+        ...result,
+        title: 'Ảnh Thẻ',
+        prompt: prompt,
+      };
+
+      setEditedResults([finalResult]);
+
+      if (finalResult.imageUrl) {
+        addToHistory({
+            imageUrl: finalResult.imageUrl,
+            prompt: finalResult.prompt,
+            category: 'id'
+        });
+      }
 
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
-      setError(`Failed to edit image: ${errorMessage}`);
+      const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi không xác định.';
+      setError(`Chỉnh sửa ảnh thất bại: ${errorMessage}`);
       console.error(err);
     } finally {
       setIsLoading(false);
     }
-  }, [originalImage, clothingImage, clothingOption, preserveFace]);
+  }, [originalImage, clothingOption, bgColor, sizeOption, skinSmooth, removeBlemishes, balanceFacialFeatures, imageSize, useManualPrompt, manualPrompt, faceZoom, verticalPan]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
       {/* Controls Column */}
-      <div className="lg:col-span-4 bg-slate-800/50 p-6 rounded-2xl shadow-lg border border-slate-700 h-fit">
-        <div className="space-y-6">
-          <ImageUploader 
-            onFileChange={handleFileChange} 
-            previewUrl={originalImage.base64}
-            showCameraButton={true}
-          />
-          <ClothingOptions
-            selected={clothingOption}
-            onChange={setClothingOption}
-            disabled={isLoading}
-            onClothingFileChange={handleClothingFileChange}
-            clothingPreviewUrl={clothingImage.base64}
-          />
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-slate-300">
-              3. Options
-            </label>
-            <PreserveFaceToggle
-              checked={preserveFace}
-              onChange={(e) => setPreserveFace(e.target.checked)}
-              disabled={isLoading}
-            />
-          </div>
+      <div className="lg:col-span-4 space-y-6 h-fit">
+        <IdPhotoConfigPanel
+          sizeOption={sizeOption}
+          setSizeOption={setSizeOption}
+          bgColor={bgColor}
+          setBgColor={setBgColor}
+          clothingOption={clothingOption}
+          setClothingOption={setClothingOption}
+          skinSmooth={skinSmooth}
+          setSkinSmooth={setSkinSmooth}
+          removeBlemishes={removeBlemishes}
+          setRemoveBlemishes={setRemoveBlemishes}
+          balanceFacialFeatures={balanceFacialFeatures}
+          setBalanceFacialFeatures={setBalanceFacialFeatures}
+          imageSize={imageSize}
+          setImageSize={setImageSize}
+          manualPrompt={manualPrompt}
+          setManualPrompt={setManualPrompt}
+          useManualPrompt={useManualPrompt}
+          setUseManualPrompt={setUseManualPrompt}
+          disabled={isLoading}
+        />
+
+        <div className="bg-slate-800/50 p-6 rounded-2xl shadow-lg border border-slate-700">
           <EditButton 
             onClick={handleEdit} 
             isLoading={isLoading}
             disabled={!originalImage.file}
           />
-          {error && <ErrorMessage message={error} />}
+          {error && <div className="mt-4"><ErrorMessage message={error} /></div>}
         </div>
       </div>
 
       {/* Results Column */}
-      <div className="lg:col-span-8">
+      <div className="lg:col-span-8 flex flex-col gap-6">
         <ResultDisplay
           originalImageUrl={originalImage.base64}
           editedResults={editedResults}
           isLoading={isLoading}
+          showIdPhotoGuide={true}
+          sizeOption={appliedSizeOption}
+          originalImageComponent={
+            <div className="h-full w-full">
+              <ImageUploader 
+                onFileChange={handleFileChange} 
+                previewUrl={originalImage.base64}
+                showCameraButton={true}
+                hideLabel={true}
+                borderless={true}
+              />
+            </div>
+          }
         />
+
+        {/* Căn Chỉnh Khung Hình (Hiện khi có ảnh kết quả) */}
+        {!isLoading && editedResults && editedResults.length > 0 && (
+          <div className="bg-gray-900/50 p-6 rounded-2xl border border-gray-800">
+            <h3 className="font-medium mb-4 text-white flex items-center gap-2">
+              <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+              </svg>
+              Căn Chỉnh Khung Hình
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-white">Phóng To (Zoom)</span>
+                  <span className="text-gray-400">{faceZoom.toFixed(2)}x</span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="2"
+                  step="0.05"
+                  value={faceZoom}
+                  onChange={(e) => setFaceZoom(parseFloat(e.target.value))}
+                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-white">Dịch Chuyển Lên/Xuống</span>
+                  <span className="text-gray-400">{verticalPan}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="-100"
+                  max="100"
+                  step="5"
+                  value={verticalPan}
+                  onChange={(e) => setVerticalPan(parseInt(e.target.value))}
+                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-4 text-center">
+              * Sử dụng thanh trượt để căn chỉnh khuôn mặt khớp với các đường gióng tiêu chuẩn trên ảnh.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

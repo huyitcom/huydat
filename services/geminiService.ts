@@ -1,14 +1,27 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 import type { GeminiApiResult } from '../types';
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const model = 'gemini-3.1-flash-image-preview';
 
-if (!API_KEY) {
-  throw new Error("API_KEY environment variable is not set.");
-}
+const getAiInstance = () => {
+  const API_KEY = process.env.API_KEY;
+  if (!API_KEY) {
+    throw new Error("API_KEY environment variable is not set.");
+  }
+  return new GoogleGenAI({ apiKey: API_KEY });
+};
 
-const ai = new GoogleGenAI({ apiKey: API_KEY });
-const model = 'gemini-2.5-flash-image';
+const handleApiError = (error: any) => {
+  console.error("Error calling Gemini API:", error);
+  if (error instanceof Error) {
+    if (error.message.includes("Requested entity was not found")) {
+      // Reset key selection state if needed by the app, but here we just throw a clear message
+      throw new Error("API Key error: Requested entity was not found. Please select your API key again.");
+    }
+    throw error;
+  }
+  throw new Error("Yêu cầu tới dịch vụ AI thất bại. Vui lòng kiểm tra console để biết chi tiết.");
+};
 
 /**
  * Edits an image using a text prompt with the Gemini API.
@@ -23,10 +36,13 @@ export const editImageWithGemini = async (
   personBase64Data: string,
   personMimeType: string,
   prompt: string,
+  aspectRatio?: string,
   clothingBase64Data?: string,
-  clothingMimeType?: string
+  clothingMimeType?: string,
+  imageSize: string = "4K"
 ): Promise<GeminiApiResult> => {
   try {
+    const ai = getAiInstance();
     const parts: any[] = [
       {
         inlineData: {
@@ -47,15 +63,23 @@ export const editImageWithGemini = async (
 
     parts.push({ text: prompt });
 
+    const config: any = {
+      responseModalities: [Modality.IMAGE],
+      imageConfig: {
+        imageSize: imageSize,
+      },
+    };
+
+    if (aspectRatio) {
+      config.imageConfig.aspectRatio = aspectRatio;
+    }
 
     const response = await ai.models.generateContent({
       model,
       contents: {
         parts: parts,
       },
-      config: {
-        responseModalities: [Modality.IMAGE],
-      },
+      config: config,
     });
 
     const result: GeminiApiResult = { imageUrl: null, text: null };
@@ -74,21 +98,21 @@ export const editImageWithGemini = async (
     }
 
     if (!result.imageUrl) {
-        let errorMessage = "The AI did not return an edited image.";
+        let errorMessage = "AI không trả về ảnh đã chỉnh sửa.";
 
         const blockReason = response.promptFeedback?.blockReason;
         const finishReason = response.candidates?.[0]?.finishReason;
 
         if (blockReason) {
-            errorMessage += ` The request was blocked for reason: ${blockReason}.`;
+            errorMessage += ` Yêu cầu bị chặn vì lý do: ${blockReason}.`;
         } else if (finishReason === 'SAFETY') {
-            errorMessage += ` The generation was stopped for safety reasons.`;
+            errorMessage += ` Quá trình tạo ảnh bị dừng vì lý do an toàn.`;
         } else {
-            errorMessage += " It might have refused the request.";
+            errorMessage += " AI có thể đã từ chối yêu cầu.";
         }
         
         if (result.text) {
-            errorMessage += ` The AI's text response: "${result.text}"`;
+            errorMessage += ` Phản hồi văn bản của AI: "${result.text}"`;
         }
         
         throw new Error(errorMessage);
@@ -96,11 +120,7 @@ export const editImageWithGemini = async (
     
     return result;
   } catch (error) {
-    console.error("Error calling Gemini API:", error);
-    if (error instanceof Error) {
-        throw error; // Re-throw the original error to preserve the detailed message.
-    }
-    throw new Error("The request to the AI service failed. Please check the console for details.");
+    return handleApiError(error);
   }
 };
 
@@ -112,6 +132,7 @@ export const inpaintImageWithGemini = async (
   prompt: string
 ): Promise<GeminiApiResult> => {
   try {
+    const ai = getAiInstance();
     const parts: any[] = [
       {
         inlineData: {
@@ -133,6 +154,9 @@ export const inpaintImageWithGemini = async (
       contents: { parts: parts },
       config: {
         responseModalities: [Modality.IMAGE],
+        imageConfig: {
+          imageSize: "4K",
+        },
       },
     });
 
@@ -150,25 +174,21 @@ export const inpaintImageWithGemini = async (
     }
     
     if (!result.imageUrl) {
-        let errorMessage = "The AI did not return an edited image.";
+        let errorMessage = "AI không trả về ảnh đã chỉnh sửa.";
         const blockReason = response.promptFeedback?.blockReason;
         const finishReason = response.candidates?.[0]?.finishReason;
         if (blockReason) {
-            errorMessage += ` The request was blocked for reason: ${blockReason}.`;
+            errorMessage += ` Yêu cầu bị chặn vì lý do: ${blockReason}.`;
         } else if (finishReason === 'SAFETY') {
-            errorMessage += ` The generation was stopped for safety reasons.`;
+            errorMessage += ` Quá trình tạo ảnh bị dừng vì lý do an toàn.`;
         } else {
-            errorMessage += " It might have refused the request.";
+            errorMessage += " AI có thể đã từ chối yêu cầu.";
         }
         throw new Error(errorMessage);
     }
 
     return result;
   } catch (error) {
-    console.error("Error calling Gemini API for inpainting:", error);
-    if (error instanceof Error) {
-        throw error; // Re-throw the original error
-    }
-    throw new Error("The inpainting request to the AI service failed. Please check the console for details.");
+    return handleApiError(error);
   }
 };
