@@ -9,12 +9,12 @@ export const HistoryTab: React.FC = () => {
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   useEffect(() => {
-    setHistory(getHistory());
+    getHistory().then(setHistory);
   }, []);
 
-  const handleClear = () => {
+  const handleClear = async () => {
     if (confirm('Bạn có chắc chắn muốn xóa lịch sử không? Không thể hoàn tác hành động này.')) {
-        clearHistory();
+        await clearHistory();
         setHistory([]);
     }
   };

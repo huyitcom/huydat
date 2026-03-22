@@ -21,15 +21,17 @@ const cropImageToAspectRatio = (base64: string, targetRatio: number, zoom: numbe
       }
 
       const imgRatio = img.width / img.height;
+      const actualTargetRatio = targetRatio > 0 ? targetRatio : imgRatio;
+      
       let baseWidth = img.width;
       let baseHeight = img.height;
 
-      if (imgRatio > targetRatio) {
+      if (imgRatio > actualTargetRatio) {
         // Image is wider than target
-        baseWidth = img.height * targetRatio;
+        baseWidth = img.height * actualTargetRatio;
       } else {
         // Image is taller than target
-        baseHeight = img.width / targetRatio;
+        baseHeight = img.width / actualTargetRatio;
       }
 
       // Apply zoom
@@ -69,8 +71,8 @@ export const IdPhotoTab: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [sizeOption, setSizeOption] = useState<string>('5x5 cm');
-  const [appliedSizeOption, setAppliedSizeOption] = useState<string>('5x5 cm');
+  const [sizeOption, setSizeOption] = useState<string>('5x5');
+  const [appliedSizeOption, setAppliedSizeOption] = useState<string>('5x5');
   const [bgColor, setBgColor] = useState<string>('white');
   const [clothingOption, setClothingOption] = useState<string>('Sơ Mi Nam');
   const [skinSmooth, setSkinSmooth] = useState<number>(0);
@@ -79,6 +81,10 @@ export const IdPhotoTab: React.FC = () => {
   const [imageSize, setImageSize] = useState<string>('2K');
   const [manualPrompt, setManualPrompt] = useState<string>('');
   const [useManualPrompt, setUseManualPrompt] = useState<boolean>(false);
+  const [customClothingImage, setCustomClothingImage] = useState<{ file: File | null; base64: string | null }>({
+    file: null,
+    base64: null,
+  });
   
   const [rawAiImage, setRawAiImage] = useState<string | null>(null);
   const [faceZoom, setFaceZoom] = useState<number>(1.0);
@@ -90,12 +96,13 @@ export const IdPhotoTab: React.FC = () => {
 
     let targetRatio = 3 / 4;
     switch (appliedSizeOption) {
-      case '5x5 cm': targetRatio = 1 / 1; break;
-      case '2x3 cm': targetRatio = 2 / 3; break;
-      case '3x4 cm': targetRatio = 3 / 4; break;
-      case '4x6 cm': targetRatio = 4 / 6; break;
-      case '3.5x4.5 cm': targetRatio = 3.5 / 4.5; break;
-      case '3.3x4.8 cm': targetRatio = 3.3 / 4.8; break;
+      case '5x5': targetRatio = 1 / 1; break;
+      case '2x3': targetRatio = 2 / 3; break;
+      case '3x4': targetRatio = 3 / 4; break;
+      case '4x6': targetRatio = 4 / 6; break;
+      case '3.5x4.5': targetRatio = 3.5 / 4.5; break;
+      case '3.3x4.8': targetRatio = 3.3 / 4.8; break;
+      case 'Gốc': targetRatio = 0; break;
     }
 
     cropImageToAspectRatio(rawAiImage, targetRatio, faceZoom, verticalPan)
@@ -157,11 +164,11 @@ export const IdPhotoTab: React.FC = () => {
         case 'Polo Trắng':
           clothingPrompt = 'Replace the outfit with a white polo shirt.';
           break;
-        case 'Polo Đen':
-          clothingPrompt = 'Replace the outfit with a black polo shirt.';
+        case 'Áo Dài Trắng':
+          clothingPrompt = 'Replace the outfit with a traditional Vietnamese white Ao Dai.';
           break;
-        case 'Thun Trắng':
-          clothingPrompt = 'Replace the outfit with a plain white t-shirt.';
+        case 'Tùy Chỉnh':
+          clothingPrompt = 'Replace the outfit with the clothing provided in the reference image.';
           break;
       }
 
@@ -177,39 +184,44 @@ export const IdPhotoTab: React.FC = () => {
       }
 
       let sizePrompt = '';
-      let geminiAspectRatio = '3:4';
+      let geminiAspectRatio: string | undefined = '3:4';
       let targetRatio = 3 / 4;
 
       switch (sizeOption) {
-        case '5x5 cm':
+        case '5x5':
           sizePrompt = 'Set the frame to a 1x1 aspect ratio.';
           geminiAspectRatio = '1:1';
           targetRatio = 1 / 1;
           break;
-        case '2x3 cm': 
+        case '2x3': 
           sizePrompt = 'Set the frame to a 2x3 aspect ratio.'; 
           geminiAspectRatio = '3:4';
           targetRatio = 2 / 3;
           break;
-        case '3x4 cm': 
+        case '3x4': 
           sizePrompt = 'Set the frame to a 3x4 aspect ratio.'; 
           geminiAspectRatio = '3:4';
           targetRatio = 3 / 4;
           break;
-        case '4x6 cm': 
+        case '4x6': 
           sizePrompt = 'Set the frame to a 4x6 aspect ratio.'; 
           geminiAspectRatio = '3:4';
           targetRatio = 4 / 6;
           break;
-        case '3.5x4.5 cm': 
+        case '3.5x4.5': 
           sizePrompt = 'Set the frame to a 3.5x4.5 aspect ratio.'; 
           geminiAspectRatio = '3:4';
           targetRatio = 3.5 / 4.5;
           break;
-        case '3.3x4.8 cm': 
+        case '3.3x4.8': 
           sizePrompt = 'Set the frame to a 3.3x4.8 aspect ratio.'; 
           geminiAspectRatio = '3:4';
           targetRatio = 3.3 / 4.8;
+          break;
+        case 'Gốc':
+          sizePrompt = 'Keep the original aspect ratio of the image.';
+          geminiAspectRatio = undefined;
+          targetRatio = 0;
           break;
       }
 
@@ -233,14 +245,22 @@ export const IdPhotoTab: React.FC = () => {
 
       const personBase64Data = originalImage.base64.split(',')[1];
       const personMimeType = originalImage.file.type;
+      
+      let clothingBase64Data: string | undefined = undefined;
+      let clothingMimeType: string | undefined = undefined;
+      
+      if (clothingOption === 'Tùy Chỉnh' && customClothingImage.base64 && customClothingImage.file) {
+        clothingBase64Data = customClothingImage.base64.split(',')[1];
+        clothingMimeType = customClothingImage.file.type;
+      }
 
       const result = await editImageWithGemini(
         personBase64Data, 
         personMimeType, 
         prompt,
         geminiAspectRatio,
-        undefined,
-        undefined,
+        clothingBase64Data,
+        clothingMimeType,
         imageSize
       );
 
@@ -277,7 +297,59 @@ export const IdPhotoTab: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [originalImage, clothingOption, bgColor, sizeOption, skinSmooth, removeBlemishes, balanceFacialFeatures, imageSize, useManualPrompt, manualPrompt, faceZoom, verticalPan]);
+  }, [originalImage, clothingOption, bgColor, sizeOption, skinSmooth, removeBlemishes, balanceFacialFeatures, imageSize, useManualPrompt, manualPrompt, faceZoom, verticalPan, customClothingImage]);
+
+  const handleUseOriginal = useCallback(async () => {
+    if (!originalImage.base64) {
+      setError('Vui lòng tải ảnh lên trước.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    setAppliedSizeOption(sizeOption);
+
+    try {
+      let targetRatio = 3 / 4;
+      switch (sizeOption) {
+        case '5x5': targetRatio = 1 / 1; break;
+        case '2x3': targetRatio = 2 / 3; break;
+        case '3x4': targetRatio = 3 / 4; break;
+        case '4x6': targetRatio = 4 / 6; break;
+        case '3.5x4.5': targetRatio = 3.5 / 4.5; break;
+        case '3.3x4.8': targetRatio = 3.3 / 4.8; break;
+        case 'Gốc': targetRatio = 0; break;
+      }
+
+      setRawAiImage(originalImage.base64);
+      
+      let croppedBase64 = originalImage.base64;
+      try {
+        croppedBase64 = await cropImageToAspectRatio(originalImage.base64, targetRatio, faceZoom, verticalPan);
+      } catch (cropErr) {
+        console.error("Error cropping image:", cropErr);
+      }
+
+      const finalResult: EditedImageResult = {
+        imageUrl: croppedBase64,
+        title: 'Ảnh Thẻ (Gốc)',
+        prompt: 'Sử dụng ảnh gốc',
+      };
+
+      setEditedResults([finalResult]);
+
+      addToHistory({
+          imageUrl: finalResult.imageUrl,
+          prompt: finalResult.prompt,
+          category: 'id'
+      });
+    } catch (err) {
+      setError('Đã xảy ra lỗi khi xử lý ảnh gốc.');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [originalImage, sizeOption, faceZoom, verticalPan]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -302,6 +374,8 @@ export const IdPhotoTab: React.FC = () => {
           setManualPrompt={setManualPrompt}
           useManualPrompt={useManualPrompt}
           setUseManualPrompt={setUseManualPrompt}
+          customClothingImage={customClothingImage}
+          setCustomClothingImage={setCustomClothingImage}
           disabled={isLoading}
         />
 
@@ -311,6 +385,14 @@ export const IdPhotoTab: React.FC = () => {
             isLoading={isLoading}
             disabled={!originalImage.file}
           />
+          <button
+            type="button"
+            onClick={handleUseOriginal}
+            disabled={isLoading || !originalImage.file}
+            className="mt-3 flex w-full justify-center items-center rounded-md bg-slate-700 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            Dùng ảnh gốc
+          </button>
           {error && <div className="mt-4"><ErrorMessage message={error} /></div>}
         </div>
       </div>

@@ -1,13 +1,14 @@
 
 import { HistoryItem } from '../types';
+import { get, set, del } from 'idb-keyval';
 
 const HISTORY_KEY = 'ai_studio_history';
 const MAX_ITEMS = 20;
 
-export const getHistory = (): HistoryItem[] => {
+export const getHistory = async (): Promise<HistoryItem[]> => {
   try {
-    const json = localStorage.getItem(HISTORY_KEY);
-    return json ? JSON.parse(json) : [];
+    const history = await get<HistoryItem[]>(HISTORY_KEY);
+    return history || [];
   } catch (e) {
     console.error("Failed to load history", e);
     return [];
@@ -21,9 +22,9 @@ const generateId = () => {
     return Math.random().toString(36).substring(2) + Date.now().toString(36);
 };
 
-export const addToHistory = (item: Omit<HistoryItem, 'id' | 'timestamp'>) => {
+export const addToHistory = async (item: Omit<HistoryItem, 'id' | 'timestamp'>) => {
   try {
-    const history = getHistory();
+    const history = await getHistory();
     const newItem: HistoryItem = {
       ...item,
       id: generateId(),
@@ -32,12 +33,12 @@ export const addToHistory = (item: Omit<HistoryItem, 'id' | 'timestamp'>) => {
 
     // Keep most recent items
     const updatedHistory = [newItem, ...history].slice(0, MAX_ITEMS);
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(updatedHistory));
+    await set(HISTORY_KEY, updatedHistory);
   } catch (e) {
     console.error("Failed to save history (storage might be full)", e);
     // Simple fallback: try to clear half of history and save again to free up space for the new item
     try {
-       const history = getHistory();
+       const history = await getHistory();
        const halfHistory = history.slice(0, Math.floor(history.length / 2));
        const newItem: HistoryItem = {
         ...item,
@@ -45,13 +46,13 @@ export const addToHistory = (item: Omit<HistoryItem, 'id' | 'timestamp'>) => {
         timestamp: Date.now(),
       };
       const updatedHistory = [newItem, ...halfHistory];
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(updatedHistory));
+      await set(HISTORY_KEY, updatedHistory);
     } catch (retryError) {
         console.error("Failed to save history even after cleanup", retryError);
     }
   }
 };
 
-export const clearHistory = () => {
-    localStorage.removeItem(HISTORY_KEY);
+export const clearHistory = async () => {
+    await del(HISTORY_KEY);
 };

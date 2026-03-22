@@ -19,6 +19,8 @@ interface IdPhotoConfigPanelProps {
   setManualPrompt: (val: string) => void;
   useManualPrompt: boolean;
   setUseManualPrompt: (val: boolean) => void;
+  customClothingImage?: { file: File | null; base64: string | null };
+  setCustomClothingImage?: (val: { file: File | null; base64: string | null }) => void;
   disabled?: boolean;
 }
 
@@ -32,9 +34,10 @@ export const IdPhotoConfigPanel: React.FC<IdPhotoConfigPanelProps> = ({
   imageSize, setImageSize,
   manualPrompt, setManualPrompt,
   useManualPrompt, setUseManualPrompt,
+  customClothingImage, setCustomClothingImage,
   disabled
 }) => {
-  const sizeOptions = ['5x5 cm', '2x3 cm', '3x4 cm', '4x6 cm', '3.5x4.5 cm', '3.3x4.8 cm'];
+  const sizeOptions = ['5x5', '2x3', '3x4', '4x6', '3.5x4.5', '3.3x4.8', 'Gốc'];
   const bgColors = [
     { id: 'white', class: 'bg-white border-gray-300' },
     { id: 'blue', class: 'bg-[#3b82f6] border-[#2563eb]' },
@@ -45,20 +48,25 @@ export const IdPhotoConfigPanel: React.FC<IdPhotoConfigPanelProps> = ({
     { id: 'light-pink', class: 'bg-[#fbcfe8] border-[#f9a8d4]' },
   ];
   const clothingOptionsList = [
-    'Giữ Nguyên', 'Vest Nam (Đen)', 'Vest Nữ', 'Sơ Mi Nam', 'Sơ Mi Nữ', 'Polo Trắng', 'Polo Đen', 'Thun Trắng'
+    'Giữ Nguyên', 'Vest Nam (Đen)', 'Vest Nữ', 'Sơ Mi Nam', 'Sơ Mi Nữ', 'Polo Trắng', 'Áo Dài Trắng', 'Tùy Chỉnh'
   ];
+
+  const handleCustomClothingUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && setCustomClothingImage) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCustomClothingImage({ file, base64: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   return (
     <div className="bg-[#111827] rounded-xl p-6 border border-gray-800 text-gray-300">
       {/* Kích Thước */}
       <div className="mb-6">
-        <div className="flex items-center gap-2 mb-3">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-          </svg>
-          <h3 className="font-medium">Kích Thước Khung Hình</h3>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-4 gap-3">
           {sizeOptions.map(size => (
             <button
               key={size}
@@ -78,12 +86,6 @@ export const IdPhotoConfigPanel: React.FC<IdPhotoConfigPanelProps> = ({
 
       {/* Độ Phân Giải */}
       <div className="mb-6">
-        <div className="flex items-center gap-2 mb-3">
-          <svg className="w-4 h-4 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          <h3 className="font-medium">Độ Phân Giải</h3>
-        </div>
         <div className="grid grid-cols-3 gap-3">
           {['1K', '2K', '4K'].map(res => (
             <button
@@ -124,12 +126,6 @@ export const IdPhotoConfigPanel: React.FC<IdPhotoConfigPanelProps> = ({
         <>
           {/* Màu Nền */}
           <div className="mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-              </svg>
-              <h3 className="font-medium">Màu Nền</h3>
-            </div>
             <div className="flex items-center gap-4 bg-[#1F2937] p-3 rounded-lg border border-gray-700">
               {bgColors.map(color => (
                 <button
@@ -146,12 +142,6 @@ export const IdPhotoConfigPanel: React.FC<IdPhotoConfigPanelProps> = ({
 
           {/* Thay Trang Phục */}
           <div className="mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-              <h3 className="font-medium">Thay Trang Phục</h3>
-            </div>
             <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-[#1F2937] [&::-webkit-scrollbar-track]:rounded-md [&::-webkit-scrollbar-thumb]:bg-[#4B5563] [&::-webkit-scrollbar-thumb]:rounded-md hover:[&::-webkit-scrollbar-thumb]:bg-[#6B7280]">
               {clothingOptionsList.map(clothing => (
                 <button
@@ -168,14 +158,37 @@ export const IdPhotoConfigPanel: React.FC<IdPhotoConfigPanelProps> = ({
                 </button>
               ))}
             </div>
+            {clothingOption === 'Tùy Chỉnh' && (
+              <div className="mt-3 p-3 bg-[#1F2937] rounded-lg border border-gray-700">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Tải lên ảnh trang phục
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCustomClothingUpload}
+                  disabled={disabled}
+                  className="block w-full text-sm text-gray-400
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-md file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-purple-500 file:text-white
+                    hover:file:bg-purple-600
+                    cursor-pointer"
+                />
+                {customClothingImage?.base64 && (
+                  <div className="mt-3 relative w-20 h-20 rounded-md overflow-hidden border border-gray-600">
+                    <img src={customClothingImage.base64} alt="Custom clothing" className="w-full h-full object-cover" />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <hr className="border-gray-800 my-6" />
 
           {/* Làm Đẹp Da & Xử Lý */}
           <div>
-            <h3 className="font-medium mb-4 text-white">Làm Đẹp Da & Xử Lý</h3>
-            
             <div className="mb-6">
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-white">Mịn Da (Skin Smooth)</span>
