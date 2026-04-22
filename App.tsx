@@ -11,7 +11,7 @@ type ActiveTab = 'id' | 'profile' | 'history';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<ActiveTab>('profile');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('id');
   const [hasApiKey, setHasApiKey] = useState<boolean>(false);
 
   // Check for API key

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { EditedImageResult } from '../types';
 import { Spinner } from './Spinner';
 import { DownloadButton } from './DownloadButton';
+import { changeDpi } from '../src/lib/imageUtils';
 
 interface ResultDisplayProps {
   originalImageUrl: string | null;
@@ -14,17 +15,22 @@ interface ResultDisplayProps {
 }
 
 const Card: React.FC<{ title: string; children: React.ReactNode; sizeOption?: string }> = ({ title, children, sizeOption }) => {
+    const cleanSize = sizeOption?.replace(' cm', '');
     let aspectClass = "aspect-[3/4]";
-    if (sizeOption === '5x5 cm') {
+    if (cleanSize === '5x5') {
       aspectClass = "aspect-square";
-    } else if (sizeOption === '2x3 cm') {
+    } else if (cleanSize === '2x3') {
       aspectClass = "aspect-[2/3]";
-    } else if (sizeOption === '4x6 cm') {
+    } else if (cleanSize === '4x6') {
       aspectClass = "aspect-[2/3]"; // 4x6 is 2:3
-    } else if (sizeOption === '3.5x4.5 cm') {
+    } else if (cleanSize === '3.5x4.5') {
       aspectClass = "aspect-[7/9]";
-    } else if (sizeOption === '3.3x4.8 cm') {
+    } else if (cleanSize === '3.3x4.8') {
       aspectClass = "aspect-[11/16]";
+    } else if (cleanSize === '6x9') {
+        aspectClass = "aspect-[2/3]";
+    } else if (cleanSize === '5x7') {
+        aspectClass = "aspect-[5/7]";
     }
 
     return (
@@ -72,49 +78,77 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ originalImageUrl, 
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, sheetWidthPx, sheetHeightPx);
 
+      const cleanSize = sizeOption.replace(' cm', '');
+
       // Determine photo physical size
       let photoWidthMm = 40;
       let photoHeightMm = 60;
-      switch (sizeOption) {
-        case '5x5 cm': photoWidthMm = 50; photoHeightMm = 50; break;
-        case '2x3 cm': photoWidthMm = 20; photoHeightMm = 30; break;
-        case '3x4 cm': photoWidthMm = 30; photoHeightMm = 40; break;
-        case '4x6 cm': photoWidthMm = 40; photoHeightMm = 60; break;
-        case '3.5x4.5 cm': photoWidthMm = 35; photoHeightMm = 45; break;
-        case '3.3x4.8 cm': photoWidthMm = 33; photoHeightMm = 48; break;
+      let numRows = 2;
+      let numCols = 2;
+
+      switch (cleanSize) {
+        case '5x5': photoWidthMm = 50; photoHeightMm = 50; break;
+        case '2x3': photoWidthMm = 20; photoHeightMm = 30; break;
+        case '3x4': 
+          // Rotate 3x4 to be 4x3 horizontal
+          photoWidthMm = 40; 
+          photoHeightMm = 30; 
+          numRows = 4;
+          numCols = 2;
+          break;
+        case '4x6': photoWidthMm = 40; photoHeightMm = 60; break;
+        case '3.5x4.5': photoWidthMm = 35; photoHeightMm = 45; break;
+        case '3.3x4.8': photoWidthMm = 33; photoHeightMm = 48; break;
+        case '6x9': photoWidthMm = 60; photoHeightMm = 90; break;
+        case '5x7': photoWidthMm = 50; photoHeightMm = 70; break;
       }
 
       const photoWidthPx = Math.round(photoWidthMm * MM_TO_INCH * DPI);
       const photoHeightPx = Math.round(photoHeightMm * MM_TO_INCH * DPI);
 
-      // Calculate grid layout (2x2)
-      const gapMm = 2; // 2mm gap
-      const marginMm = 5; // 5mm margin from top-left
+      // Calculate grid layout
+      const gapMm = 3; // 3mm gap
       const gapPx = Math.round(gapMm * MM_TO_INCH * DPI);
-      const marginPx = Math.round(marginMm * MM_TO_INCH * DPI);
+      
+      // Calculate total grid size to center it
+      const totalGridWidth = numCols * photoWidthPx + (numCols - 1) * gapPx;
+      const totalGridHeight = numRows * photoHeightPx + (numRows - 1) * gapPx;
+      
+      const startX = (sheetWidthPx - totalGridWidth) / 2;
+      const startY = (sheetHeightPx - totalGridHeight) / 2;
 
-      const startX = marginPx;
-      const startY = marginPx;
-
-      // Draw 4 photos
-      for (let row = 0; row < 2; row++) {
-        for (let col = 0; col < 2; col++) {
+      // Draw photos
+      for (let row = 0; row < numRows; row++) {
+        for (let col = 0; col < numCols; col++) {
           const x = startX + col * (photoWidthPx + gapPx);
           const y = startY + row * (photoHeightPx + gapPx);
-          ctx.drawImage(img, x, y, photoWidthPx, photoHeightPx);
+          
+          if (cleanSize === '3x4') {
+            ctx.save();
+            ctx.translate(x + photoWidthPx / 2, y + photoHeightPx / 2);
+            ctx.rotate(Math.PI / 2); // Rotate 90 degrees clockwise
+            // Image was originally vertical (3x4), now we draw it horizontally in the 4x3 slot
+            // Since we rotated 90deg, width becomes height and height becomes width
+            ctx.drawImage(img, -photoHeightPx / 2, -photoWidthPx / 2, photoHeightPx, photoWidthPx);
+            ctx.restore();
+          } else {
+            ctx.drawImage(img, x, y, photoWidthPx, photoHeightPx);
+          }
           
           // Draw a thin cut line/border
           ctx.strokeStyle = '#cccccc';
-          ctx.lineWidth = 2;
+          ctx.lineWidth = 1;
           ctx.strokeRect(x, y, photoWidthPx, photoHeightPx);
         }
       }
 
-      // Download
-      const sheetDataUrl = canvas.toDataURL('image/jpeg', 1.0);
+      // Download with 300 DPI
+      const sheetDataUrl = canvas.toDataURL('image/jpeg', 0.98);
+      const highDpiSheetUrl = changeDpi(sheetDataUrl, 300);
+      
       const link = document.createElement('a');
-      link.href = sheetDataUrl;
-      link.download = `id-photo-sheet-13x18-${Date.now()}.jpg`;
+      link.href = highDpiSheetUrl;
+      link.download = `id-photo-sheet-13x18-${cleanSize}-${Date.now()}.jpg`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -293,7 +327,7 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ originalImageUrl, 
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
                       <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                     </svg>
-                    Tạo Sheet 13x18cm (4 ảnh)
+                    Tạo Sheet 13x18cm ({sizeOption?.replace(' cm', '') === '3x4' ? '8 ảnh' : '4 ảnh'})
                   </span>
                 )}
               </button>

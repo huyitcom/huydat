@@ -9,7 +9,7 @@ import { editImageWithGemini } from '../services/geminiService';
 import { addToHistory } from '../services/historyService';
 import type { EditedImageResult } from '../types';
 
-const cropImageToAspectRatio = (base64: string, targetRatio: number, zoom: number = 1, panY: number = 0): Promise<string> => {
+const cropImageToAspectRatio = (base64: string, targetRatio: number, zoom: number = 1, panY: number = 0, forceWidth?: number, forceHeight?: number): Promise<string> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -51,10 +51,10 @@ const cropImageToAspectRatio = (base64: string, targetRatio: number, zoom: numbe
       // Clamp sy to ensure we don't crop outside the image
       sy = Math.max(0, Math.min(sy, img.height - sHeight));
 
-      canvas.width = sWidth;
-      canvas.height = sHeight;
+      canvas.width = forceWidth || sWidth;
+      canvas.height = forceHeight || sHeight;
 
-      ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
+      ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
       resolve(canvas.toDataURL('image/jpeg', 0.95));
     };
     img.onerror = reject;
@@ -71,20 +71,21 @@ export const IdPhotoTab: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [sizeOption, setSizeOption] = useState<string>('5x5');
-  const [appliedSizeOption, setAppliedSizeOption] = useState<string>('5x5');
+  const [sizeOption, setSizeOption] = useState<string>('4x6');
+  const [appliedSizeOption, setAppliedSizeOption] = useState<string>('4x6');
   const [bgColor, setBgColor] = useState<string>('white');
   const [clothingOption, setClothingOption] = useState<string>('Sơ Mi Nam');
   const [skinSmooth, setSkinSmooth] = useState<number>(0);
   const [removeBlemishes, setRemoveBlemishes] = useState<boolean>(false);
   const [balanceFacialFeatures, setBalanceFacialFeatures] = useState<boolean>(false);
-  const [imageSize, setImageSize] = useState<string>('2K');
+  const [imageSize, setImageSize] = useState<string>('1K');
   const [manualPrompt, setManualPrompt] = useState<string>('');
   const [useManualPrompt, setUseManualPrompt] = useState<boolean>(false);
   const [customClothingImage, setCustomClothingImage] = useState<{ file: File | null; base64: string | null }>({
     file: null,
     base64: null,
   });
+  const [customClothingDescription, setCustomClothingDescription] = useState<string>('');
   
   const [rawAiImage, setRawAiImage] = useState<string | null>(null);
   const [faceZoom, setFaceZoom] = useState<number>(1.0);
@@ -94,18 +95,26 @@ export const IdPhotoTab: React.FC = () => {
   useEffect(() => {
     if (!rawAiImage) return;
 
-    let targetRatio = 3 / 4;
-    switch (appliedSizeOption) {
-      case '5x5': targetRatio = 1 / 1; break;
-      case '2x3': targetRatio = 2 / 3; break;
-      case '3x4': targetRatio = 3 / 4; break;
-      case '4x6': targetRatio = 4 / 6; break;
-      case '3.5x4.5': targetRatio = 3.5 / 4.5; break;
-      case '3.3x4.8': targetRatio = 3.3 / 4.8; break;
+    const cleanSize = appliedSizeOption.replace(' cm', '');
+    let targetRatio = 1;
+    let targetWidthPx = 0;
+    let targetHeightPx = 0;
+    const MM_TO_INCH = 1 / 25.4;
+    const DPI = 400;
+
+    switch (cleanSize) {
+      case '5x5': targetRatio = 1; targetWidthPx = Math.round(50 * MM_TO_INCH * DPI); targetHeightPx = Math.round(50 * MM_TO_INCH * DPI); break;
+      case '2x3': targetRatio = 2 / 3; targetWidthPx = Math.round(20 * MM_TO_INCH * DPI); targetHeightPx = Math.round(30 * MM_TO_INCH * DPI); break;
+      case '3x4': targetRatio = 3 / 4; targetWidthPx = Math.round(30 * MM_TO_INCH * DPI); targetHeightPx = Math.round(40 * MM_TO_INCH * DPI); break;
+      case '4x6': targetRatio = 4 / 6; targetWidthPx = Math.round(40 * MM_TO_INCH * DPI); targetHeightPx = Math.round(60 * MM_TO_INCH * DPI); break;
+      case '3.5x4.5': targetRatio = 3.5 / 4.5; targetWidthPx = Math.round(35 * MM_TO_INCH * DPI); targetHeightPx = Math.round(45 * MM_TO_INCH * DPI); break;
+      case '3.3x4.8': targetRatio = 3.3 / 4.8; targetWidthPx = Math.round(33 * MM_TO_INCH * DPI); targetHeightPx = Math.round(48 * MM_TO_INCH * DPI); break;
+      case '6x9': targetRatio = 6 / 9; targetWidthPx = Math.round(60 * MM_TO_INCH * DPI); targetHeightPx = Math.round(90 * MM_TO_INCH * DPI); break;
+      case '5x7': targetRatio = 5 / 7; targetWidthPx = Math.round(50 * MM_TO_INCH * DPI); targetHeightPx = Math.round(70 * MM_TO_INCH * DPI); break;
       case 'Gốc': targetRatio = 0; break;
     }
 
-    cropImageToAspectRatio(rawAiImage, targetRatio, faceZoom, verticalPan)
+    cropImageToAspectRatio(rawAiImage, targetRatio, faceZoom, verticalPan, targetWidthPx || undefined, targetHeightPx || undefined)
       .then(cropped => {
         setEditedResults(prev => {
           if (!prev || prev.length === 0) return prev;
@@ -168,7 +177,11 @@ export const IdPhotoTab: React.FC = () => {
           clothingPrompt = 'Replace the outfit with a traditional Vietnamese white Ao Dai.';
           break;
         case 'Tùy Chỉnh':
-          clothingPrompt = 'Replace the outfit with the clothing provided in the reference image.';
+          if (customClothingDescription.trim()) {
+            clothingPrompt = `Replace the outfit with: ${customClothingDescription}.`;
+          } else {
+            clothingPrompt = 'Replace the outfit with the clothing provided in the reference image.';
+          }
           break;
       }
 
@@ -218,6 +231,16 @@ export const IdPhotoTab: React.FC = () => {
           geminiAspectRatio = '3:4';
           targetRatio = 3.3 / 4.8;
           break;
+        case '6x9':
+          sizePrompt = 'Set the frame to a 6x9 aspect ratio.';
+          geminiAspectRatio = '3:4';
+          targetRatio = 6 / 9;
+          break;
+        case '5x7':
+          sizePrompt = 'Set the frame to a 5x7 aspect ratio.';
+          geminiAspectRatio = '3:4';
+          targetRatio = 5 / 7;
+          break;
         case 'Gốc':
           sizePrompt = 'Keep the original aspect ratio of the image.';
           geminiAspectRatio = undefined;
@@ -266,8 +289,26 @@ export const IdPhotoTab: React.FC = () => {
 
       if (result.imageUrl) {
         setRawAiImage(result.imageUrl);
+        
+        const cleanSize = sizeOption.replace(' cm', '');
+        let tw = 0;
+        let th = 0;
+        const MM_TO_INCH = 1 / 25.4;
+        const DPI = 400;
+        
+        switch (cleanSize) {
+          case '5x5': tw = Math.round(50 * MM_TO_INCH * DPI); th = Math.round(50 * MM_TO_INCH * DPI); break;
+          case '2x3': tw = Math.round(20 * MM_TO_INCH * DPI); th = Math.round(30 * MM_TO_INCH * DPI); break;
+          case '3x4': tw = Math.round(30 * MM_TO_INCH * DPI); th = Math.round(40 * MM_TO_INCH * DPI); break;
+          case '4x6': tw = Math.round(40 * MM_TO_INCH * DPI); th = Math.round(60 * MM_TO_INCH * DPI); break;
+          case '3.5x4.5': tw = Math.round(35 * MM_TO_INCH * DPI); th = Math.round(45 * MM_TO_INCH * DPI); break;
+          case '3.3x4.8': tw = Math.round(33 * MM_TO_INCH * DPI); th = Math.round(48 * MM_TO_INCH * DPI); break;
+          case '6x9': tw = Math.round(60 * MM_TO_INCH * DPI); th = Math.round(90 * MM_TO_INCH * DPI); break;
+          case '5x7': tw = Math.round(50 * MM_TO_INCH * DPI); th = Math.round(70 * MM_TO_INCH * DPI); break;
+        }
+
         try {
-          const croppedBase64 = await cropImageToAspectRatio(result.imageUrl, targetRatio, faceZoom, verticalPan);
+          const croppedBase64 = await cropImageToAspectRatio(result.imageUrl, targetRatio, faceZoom, verticalPan, tw || undefined, th || undefined);
           result.imageUrl = croppedBase64;
         } catch (cropErr) {
           console.error("Error cropping image:", cropErr);
@@ -297,7 +338,7 @@ export const IdPhotoTab: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [originalImage, clothingOption, bgColor, sizeOption, skinSmooth, removeBlemishes, balanceFacialFeatures, imageSize, useManualPrompt, manualPrompt, faceZoom, verticalPan, customClothingImage]);
+  }, [originalImage, clothingOption, bgColor, sizeOption, skinSmooth, removeBlemishes, balanceFacialFeatures, imageSize, useManualPrompt, manualPrompt, faceZoom, verticalPan, customClothingImage, customClothingDescription]);
 
   const handleUseOriginal = useCallback(async () => {
     if (!originalImage.base64) {
@@ -310,14 +351,23 @@ export const IdPhotoTab: React.FC = () => {
     setAppliedSizeOption(sizeOption);
 
     try {
-      let targetRatio = 3 / 4;
-      switch (sizeOption) {
-        case '5x5': targetRatio = 1 / 1; break;
-        case '2x3': targetRatio = 2 / 3; break;
-        case '3x4': targetRatio = 3 / 4; break;
-        case '4x6': targetRatio = 4 / 6; break;
-        case '3.5x4.5': targetRatio = 3.5 / 4.5; break;
-        case '3.3x4.8': targetRatio = 3.3 / 4.8; break;
+      const cleanSize = sizeOption.replace(' cm', '');
+      let targetRatio = 1;
+      let targetWidthPx = 0;
+      let targetHeightPx = 0;
+      
+      const MM_TO_INCH = 1 / 25.4;
+      const DPI = 400;
+
+      switch (cleanSize) {
+        case '5x5': targetRatio = 1; targetWidthPx = Math.round(50 * MM_TO_INCH * DPI); targetHeightPx = Math.round(50 * MM_TO_INCH * DPI); break;
+        case '2x3': targetRatio = 2 / 3; targetWidthPx = Math.round(20 * MM_TO_INCH * DPI); targetHeightPx = Math.round(30 * MM_TO_INCH * DPI); break;
+        case '3x4': targetRatio = 3 / 4; targetWidthPx = Math.round(30 * MM_TO_INCH * DPI); targetHeightPx = Math.round(40 * MM_TO_INCH * DPI); break;
+        case '4x6': targetRatio = 4 / 6; targetWidthPx = Math.round(40 * MM_TO_INCH * DPI); targetHeightPx = Math.round(60 * MM_TO_INCH * DPI); break;
+        case '3.5x4.5': targetRatio = 3.5 / 4.5; targetWidthPx = Math.round(35 * MM_TO_INCH * DPI); targetHeightPx = Math.round(45 * MM_TO_INCH * DPI); break;
+        case '3.3x4.8': targetRatio = 3.3 / 4.8; targetWidthPx = Math.round(33 * MM_TO_INCH * DPI); targetHeightPx = Math.round(48 * MM_TO_INCH * DPI); break;
+        case '6x9': targetRatio = 6 / 9; targetWidthPx = Math.round(60 * MM_TO_INCH * DPI); targetHeightPx = Math.round(90 * MM_TO_INCH * DPI); break;
+        case '5x7': targetRatio = 5 / 7; targetWidthPx = Math.round(50 * MM_TO_INCH * DPI); targetHeightPx = Math.round(70 * MM_TO_INCH * DPI); break;
         case 'Gốc': targetRatio = 0; break;
       }
 
@@ -325,7 +375,7 @@ export const IdPhotoTab: React.FC = () => {
       
       let croppedBase64 = originalImage.base64;
       try {
-        croppedBase64 = await cropImageToAspectRatio(originalImage.base64, targetRatio, faceZoom, verticalPan);
+        croppedBase64 = await cropImageToAspectRatio(originalImage.base64, targetRatio, faceZoom, verticalPan, targetWidthPx || undefined, targetHeightPx || undefined);
       } catch (cropErr) {
         console.error("Error cropping image:", cropErr);
       }
@@ -334,6 +384,7 @@ export const IdPhotoTab: React.FC = () => {
         imageUrl: croppedBase64,
         title: 'Ảnh Thẻ (Gốc)',
         prompt: 'Sử dụng ảnh gốc',
+        text: null,
       };
 
       setEditedResults([finalResult]);
@@ -376,6 +427,8 @@ export const IdPhotoTab: React.FC = () => {
           setUseManualPrompt={setUseManualPrompt}
           customClothingImage={customClothingImage}
           setCustomClothingImage={setCustomClothingImage}
+          customClothingDescription={customClothingDescription}
+          setCustomClothingDescription={setCustomClothingDescription}
           disabled={isLoading}
         />
 
@@ -391,7 +444,7 @@ export const IdPhotoTab: React.FC = () => {
             disabled={isLoading || !originalImage.file}
             className="mt-3 flex w-full justify-center items-center rounded-md bg-slate-700 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            Dùng ảnh gốc
+            Dùng ảnh gốc (Miễn phí)
           </button>
           {error && <div className="mt-4"><ErrorMessage message={error} /></div>}
         </div>

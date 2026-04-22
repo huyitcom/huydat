@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { changeDpi } from '../src/lib/imageUtils';
 
 interface DownloadButtonProps {
   imageUrl: string;
@@ -16,13 +17,16 @@ export const DownloadButton: React.FC<DownloadButtonProps> = ({ imageUrl }) => {
     e.stopPropagation(); // Prevent any parent onClick handlers from firing
     if (!imageUrl) return;
 
+    // Set DPI to 400 for high-quality printing
+    const highDpiImageUrl = changeDpi(imageUrl, 400);
+
     const link = document.createElement('a');
-    link.href = imageUrl;
+    link.href = highDpiImageUrl;
 
     // Infer extension from mime type in data URL
-    const mimeType = imageUrl.split(';')[0].split(':')[1];
+    const mimeType = highDpiImageUrl.split(';')[0].split(':')[1];
     const extension = mimeType ? mimeType.split('/')[1] : 'png';
-    link.download = `edited-image.${extension}`;
+    link.download = `photo-400dpi.${extension}`;
     
     document.body.appendChild(link);
     link.click();

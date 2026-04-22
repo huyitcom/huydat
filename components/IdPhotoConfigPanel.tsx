@@ -21,6 +21,8 @@ interface IdPhotoConfigPanelProps {
   setUseManualPrompt: (val: boolean) => void;
   customClothingImage?: { file: File | null; base64: string | null };
   setCustomClothingImage?: (val: { file: File | null; base64: string | null }) => void;
+  customClothingDescription: string;
+  setCustomClothingDescription: (val: string) => void;
   disabled?: boolean;
 }
 
@@ -35,14 +37,15 @@ export const IdPhotoConfigPanel: React.FC<IdPhotoConfigPanelProps> = ({
   manualPrompt, setManualPrompt,
   useManualPrompt, setUseManualPrompt,
   customClothingImage, setCustomClothingImage,
+  customClothingDescription, setCustomClothingDescription,
   disabled
 }) => {
-  const sizeOptions = ['5x5', '2x3', '3x4', '4x6', '3.5x4.5', '3.3x4.8', 'Gốc'];
+  const sizeOptions = ['5x5', '2x3', '3x4', '4x6', '3.5x4.5', '3.3x4.8', '6x9', '5x7', 'Gốc'];
   const bgColors = [
     { id: 'white', class: 'bg-white border-gray-300' },
     { id: 'blue', class: 'bg-[#3b82f6] border-[#2563eb]' },
     { id: 'black', class: 'bg-[#000000] border-gray-700' },
-    { id: 'gray', class: 'bg-[#6b7280] border-[#4b5563]' },
+    { id: 'gray', class: 'bg-[#e5e7eb] border-gray-400' },
     { id: 'dark-gray', class: 'bg-[#374151] border-[#1f2937]' },
     { id: 'dark-blue', class: 'bg-[#1e3a8a] border-[#1e40af]' },
     { id: 'light-pink', class: 'bg-[#fbcfe8] border-[#f9a8d4]' },
@@ -86,8 +89,8 @@ export const IdPhotoConfigPanel: React.FC<IdPhotoConfigPanelProps> = ({
 
       {/* Độ Phân Giải */}
       <div className="mb-6">
-        <div className="grid grid-cols-3 gap-3">
-          {['1K', '2K', '4K'].map(res => (
+        <div className="grid grid-cols-2 gap-3">
+          {['1K', '2K'].map(res => (
             <button
               key={res}
               onClick={() => setImageSize(res)}
@@ -160,27 +163,42 @@ export const IdPhotoConfigPanel: React.FC<IdPhotoConfigPanelProps> = ({
             </div>
             {clothingOption === 'Tùy Chỉnh' && (
               <div className="mt-3 p-3 bg-[#1F2937] rounded-lg border border-gray-700">
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Tải lên ảnh trang phục
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleCustomClothingUpload}
-                  disabled={disabled}
-                  className="block w-full text-sm text-gray-400
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-md file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-purple-500 file:text-white
-                    hover:file:bg-purple-600
-                    cursor-pointer"
-                />
-                {customClothingImage?.base64 && (
-                  <div className="mt-3 relative w-20 h-20 rounded-md overflow-hidden border border-gray-600">
-                    <img src={customClothingImage.base64} alt="Custom clothing" className="w-full h-full object-cover" />
-                  </div>
-                )}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Tải lên ảnh trang phục (Tùy chọn)
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleCustomClothingUpload}
+                    disabled={disabled}
+                    className="block w-full text-sm text-gray-400
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-md file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-purple-500 file:text-white
+                      hover:file:bg-purple-600
+                      cursor-pointer"
+                  />
+                  {customClothingImage?.base64 && (
+                    <div className="mt-3 relative w-20 h-20 rounded-md overflow-hidden border border-gray-600">
+                      <img src={customClothingImage.base64} alt="Custom clothing" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Tự mô tả trang phục
+                  </label>
+                  <textarea
+                    value={customClothingDescription}
+                    onChange={(e) => setCustomClothingDescription(e.target.value)}
+                    disabled={disabled}
+                    placeholder="Ví dụ: Áo sơ mi xanh nhạt, cà vạt đỏ..."
+                    className="w-full h-20 bg-[#111827] border border-gray-600 rounded-lg p-2 text-sm text-gray-200 focus:ring-1 focus:ring-purple-500 outline-none resize-none"
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -235,12 +253,6 @@ export const IdPhotoConfigPanel: React.FC<IdPhotoConfigPanelProps> = ({
         </>
       ) : (
         <div className="mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            <h3 className="font-medium">Nhập Prompt Thủ Công</h3>
-          </div>
           <textarea
             value={manualPrompt}
             onChange={(e) => setManualPrompt(e.target.value)}

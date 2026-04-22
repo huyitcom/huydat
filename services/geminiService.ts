@@ -1,7 +1,7 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 import type { GeminiApiResult } from '../types';
 
-const model = 'gemini-3.1-flash-image-preview';
+const model = 'gemini-2.5-flash-image';
 
 const getAiInstance = () => {
   // Try process.env first (for Vite define), then import.meta.env (for Vercel/Vite client)
@@ -15,9 +15,15 @@ const getAiInstance = () => {
 const handleApiError = (error: any) => {
   console.error("Error calling Gemini API:", error);
   if (error instanceof Error) {
-    if (error.message.includes("Requested entity was not found")) {
-      // Reset key selection state if needed by the app, but here we just throw a clear message
-      throw new Error("API Key error: Requested entity was not found. Please select your API key again.");
+    const msg = error.message;
+    if (msg.includes("Requested entity was not found")) {
+      throw new Error("Lỗi API Key: Không tìm thấy thực thể yêu cầu. Vui lòng kiểm tra lại API Key.");
+    }
+    if (msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("quota")) {
+      if (msg.includes("limit: 0")) {
+        throw new Error("Hạn mức sử dụng của mô hình này đang bằng 0. Điều này có thể do mô hình chưa được hỗ trợ trong vùng của bạn hoặc bạn cần kích hoạt 'Generative Language API' trong Google Cloud Console. Hãy thử đổi sang mô hình khác hoặc kiểm tra lại tài khoản.");
+      }
+      throw new Error("Bạn đã hết hạn mức sử dụng API miễn phí trong lúc này. Vui lòng đợi vài phút rồi thử lại, hoặc nâng cấp gói API của bạn.");
     }
     throw error;
   }
@@ -40,7 +46,7 @@ export const editImageWithGemini = async (
   aspectRatio?: string,
   clothingBase64Data?: string,
   clothingMimeType?: string,
-  imageSize: string = "4K"
+  imageSize: string = "1K"
 ): Promise<GeminiApiResult> => {
   try {
     const ai = getAiInstance();
@@ -156,7 +162,7 @@ export const inpaintImageWithGemini = async (
       config: {
         responseModalities: [Modality.IMAGE],
         imageConfig: {
-          imageSize: "4K",
+          imageSize: "1K",
         },
       },
     });
