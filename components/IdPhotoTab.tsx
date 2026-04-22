@@ -444,7 +444,7 @@ export const IdPhotoTab: React.FC = () => {
             disabled={isLoading || !originalImage.file}
             className="mt-3 flex w-full justify-center items-center rounded-md bg-slate-700 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            Dùng ảnh gốc (Miễn phí)
+            Dùng ảnh gốc
           </button>
           {error && <div className="mt-4"><ErrorMessage message={error} /></div>}
         </div>
