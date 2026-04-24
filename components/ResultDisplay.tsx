@@ -79,6 +79,8 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ originalImageUrl, 
       ctx.fillRect(0, 0, sheetWidthPx, sheetHeightPx);
 
       const cleanSize = sizeOption.replace(' cm', '');
+      const rotateList = ['2x3', '3x4', '4x6', '3.5x4.5', '3.3x4.8'];
+      const shouldRotate = rotateList.includes(cleanSize);
 
       // Determine photo physical size
       let photoWidthMm = 40;
@@ -88,17 +90,16 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ originalImageUrl, 
 
       switch (cleanSize) {
         case '5x5': photoWidthMm = 50; photoHeightMm = 50; break;
-        case '2x3': photoWidthMm = 20; photoHeightMm = 30; break;
+        case '2x3': photoWidthMm = 30; photoHeightMm = 20; break;
         case '3x4': 
-          // Rotate 3x4 to be 4x3 horizontal
           photoWidthMm = 40; 
           photoHeightMm = 30; 
           numRows = 4;
           numCols = 2;
           break;
-        case '4x6': photoWidthMm = 40; photoHeightMm = 60; break;
-        case '3.5x4.5': photoWidthMm = 35; photoHeightMm = 45; break;
-        case '3.3x4.8': photoWidthMm = 33; photoHeightMm = 48; break;
+        case '4x6': photoWidthMm = 60; photoHeightMm = 40; break;
+        case '3.5x4.5': photoWidthMm = 45; photoHeightMm = 35; break;
+        case '3.3x4.8': photoWidthMm = 48; photoHeightMm = 33; break;
         case '6x9': photoWidthMm = 60; photoHeightMm = 90; break;
         case '5x7': photoWidthMm = 50; photoHeightMm = 70; break;
       }
@@ -107,15 +108,16 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ originalImageUrl, 
       const photoHeightPx = Math.round(photoHeightMm * MM_TO_INCH * DPI);
 
       // Calculate grid layout
-      const gapMm = 3; // 3mm gap
+      const gapMm = 1.5; // 1.5mm gap (closer than before)
       const gapPx = Math.round(gapMm * MM_TO_INCH * DPI);
       
       // Calculate total grid size to center it
       const totalGridWidth = numCols * photoWidthPx + (numCols - 1) * gapPx;
       const totalGridHeight = numRows * photoHeightPx + (numRows - 1) * gapPx;
       
+      const marginTopPx = Math.round(5 * MM_TO_INCH * DPI);
       const startX = (sheetWidthPx - totalGridWidth) / 2;
-      const startY = (sheetHeightPx - totalGridHeight) / 2;
+      const startY = marginTopPx;
 
       // Draw photos
       for (let row = 0; row < numRows; row++) {
@@ -123,11 +125,10 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ originalImageUrl, 
           const x = startX + col * (photoWidthPx + gapPx);
           const y = startY + row * (photoHeightPx + gapPx);
           
-          if (cleanSize === '3x4') {
+          if (shouldRotate) {
             ctx.save();
             ctx.translate(x + photoWidthPx / 2, y + photoHeightPx / 2);
             ctx.rotate(Math.PI / 2); // Rotate 90 degrees clockwise
-            // Image was originally vertical (3x4), now we draw it horizontally in the 4x3 slot
             // Since we rotated 90deg, width becomes height and height becomes width
             ctx.drawImage(img, -photoHeightPx / 2, -photoWidthPx / 2, photoHeightPx, photoWidthPx);
             ctx.restore();
@@ -136,7 +137,7 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ originalImageUrl, 
           }
           
           // Draw a thin cut line/border
-          ctx.strokeStyle = '#cccccc';
+          ctx.strokeStyle = '#888888'; // Darker gray for border
           ctx.lineWidth = 1;
           ctx.strokeRect(x, y, photoWidthPx, photoHeightPx);
         }
