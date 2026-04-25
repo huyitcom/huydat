@@ -9,7 +9,7 @@ import { editImageWithGemini } from '../services/geminiService';
 import { addToHistory } from '../services/historyService';
 import type { EditedImageResult } from '../types';
 
-const cropImageToAspectRatio = (base64: string, targetRatio: number, zoom: number = 1, panY: number = 0, forceWidth?: number, forceHeight?: number): Promise<string> => {
+const cropImageToAspectRatio = (base64: string, targetRatio: number, zoom: number = 1, panY: number = 0, forceWidth?: number, forceHeight?: number, panX: number = 0): Promise<string> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
@@ -39,15 +39,24 @@ const cropImageToAspectRatio = (base64: string, targetRatio: number, zoom: numbe
       const sHeight = baseHeight / zoom;
 
       // Center X
-      const sx = (img.width - sWidth) / 2;
+      const sx_center = (img.width - sWidth) / 2;
       
       // Center Y
       const sy_center = (img.height - sHeight) / 2;
       
       // Pan Y: panY is from -100 (top) to 100 (bottom)
-      const maxPan = sy_center;
-      let sy = sy_center + (panY / 100) * maxPan;
+      // Moving slider down (positive) should move person down, which means crop window moves up (sy decreases)
+      const maxPanY = sy_center;
+      let sy = sy_center - (panY / 100) * maxPanY;
       
+      // Pan X: panX is from -100 (left) to 100 (right)
+      // Moving slider right (positive) should move person right, which means crop window moves left (sx decreases)
+      const maxPanX = sx_center;
+      let sx = sx_center - (panX / 100) * maxPanX;
+
+      // Clamp sx to ensure we don't crop outside the image
+      sx = Math.max(0, Math.min(sx, img.width - sWidth));
+
       // Clamp sy to ensure we don't crop outside the image
       sy = Math.max(0, Math.min(sy, img.height - sHeight));
 
@@ -90,6 +99,7 @@ export const IdPhotoTab: React.FC = () => {
   const [rawAiImage, setRawAiImage] = useState<string | null>(null);
   const [faceZoom, setFaceZoom] = useState<number>(1.0);
   const [verticalPan, setVerticalPan] = useState<number>(0);
+  const [horizontalPan, setHorizontalPan] = useState<number>(0);
 
   // Interactive cropping effect
   useEffect(() => {
@@ -114,7 +124,7 @@ export const IdPhotoTab: React.FC = () => {
       case 'Gốc': targetRatio = 0; break;
     }
 
-    cropImageToAspectRatio(rawAiImage, targetRatio, faceZoom, verticalPan, targetWidthPx || undefined, targetHeightPx || undefined)
+    cropImageToAspectRatio(rawAiImage, targetRatio, faceZoom, verticalPan, targetWidthPx || undefined, targetHeightPx || undefined, horizontalPan)
       .then(cropped => {
         setEditedResults(prev => {
           if (!prev || prev.length === 0) return prev;
@@ -122,7 +132,7 @@ export const IdPhotoTab: React.FC = () => {
         });
       })
       .catch(err => console.error("Error re-cropping image:", err));
-  }, [rawAiImage, appliedSizeOption, faceZoom, verticalPan]);
+  }, [rawAiImage, appliedSizeOption, faceZoom, verticalPan, horizontalPan]);
 
   const handleFileChange = (file: File | null) => {
     if (file) {
@@ -308,7 +318,7 @@ export const IdPhotoTab: React.FC = () => {
         }
 
         try {
-          const croppedBase64 = await cropImageToAspectRatio(result.imageUrl, targetRatio, faceZoom, verticalPan, tw || undefined, th || undefined);
+          const croppedBase64 = await cropImageToAspectRatio(result.imageUrl, targetRatio, faceZoom, verticalPan, tw || undefined, th || undefined, horizontalPan);
           result.imageUrl = croppedBase64;
         } catch (cropErr) {
           console.error("Error cropping image:", cropErr);
@@ -338,7 +348,7 @@ export const IdPhotoTab: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [originalImage, clothingOption, bgColor, sizeOption, skinSmooth, removeBlemishes, balanceFacialFeatures, imageSize, useManualPrompt, manualPrompt, faceZoom, verticalPan, customClothingImage, customClothingDescription]);
+  }, [originalImage, clothingOption, bgColor, sizeOption, skinSmooth, removeBlemishes, balanceFacialFeatures, imageSize, useManualPrompt, manualPrompt, faceZoom, verticalPan, horizontalPan, customClothingImage, customClothingDescription]);
 
   const handleUseOriginal = useCallback(async () => {
     if (!originalImage.base64) {
@@ -375,7 +385,7 @@ export const IdPhotoTab: React.FC = () => {
       
       let croppedBase64 = originalImage.base64;
       try {
-        croppedBase64 = await cropImageToAspectRatio(originalImage.base64, targetRatio, faceZoom, verticalPan, targetWidthPx || undefined, targetHeightPx || undefined);
+        croppedBase64 = await cropImageToAspectRatio(originalImage.base64, targetRatio, faceZoom, verticalPan, targetWidthPx || undefined, targetHeightPx || undefined, horizontalPan);
       } catch (cropErr) {
         console.error("Error cropping image:", cropErr);
       }
@@ -400,7 +410,7 @@ export const IdPhotoTab: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [originalImage, sizeOption, faceZoom, verticalPan]);
+  }, [originalImage, sizeOption, faceZoom, verticalPan, horizontalPan]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -481,7 +491,7 @@ export const IdPhotoTab: React.FC = () => {
               Căn Chỉnh Khung Hình
             </h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <div className="flex justify-between text-sm mb-2">
                   <span className="text-white">Phóng To (Zoom)</span>
@@ -510,6 +520,22 @@ export const IdPhotoTab: React.FC = () => {
                   step="5"
                   value={verticalPan}
                   onChange={(e) => setVerticalPan(parseInt(e.target.value))}
+                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-white">Dịch Chuyển Trái/Phải</span>
+                  <span className="text-gray-400">{horizontalPan}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="-100"
+                  max="100"
+                  step="5"
+                  value={horizontalPan}
+                  onChange={(e) => setHorizontalPan(parseInt(e.target.value))}
                   className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
                 />
               </div>
