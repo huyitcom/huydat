@@ -34,25 +34,25 @@ const cropImageToAspectRatio = (base64: string, targetRatio: number, zoom: numbe
         baseHeight = img.width / actualTargetRatio;
       }
 
-      // Apply zoom
-      const sWidth = baseWidth / zoom;
-      const sHeight = baseHeight / zoom;
+      // Apply zoom (rounded to integer)
+      const sWidth = Math.round(baseWidth / zoom);
+      const sHeight = Math.round(baseHeight / zoom);
 
-      // Center X
-      const sx_center = (img.width - sWidth) / 2;
+      // Center X (rounded to integer)
+      const sx_center = Math.round((img.width - sWidth) / 2);
       
-      // Center Y
-      const sy_center = (img.height - sHeight) / 2;
+      // Center Y (rounded to integer)
+      const sy_center = Math.round((img.height - sHeight) / 2);
       
       // Pan Y: panY is from -100 (top) to 100 (bottom)
       // Moving slider down (positive) should move person down, which means crop window moves up (sy decreases)
       const maxPanY = sy_center;
-      let sy = sy_center - (panY / 100) * maxPanY;
+      let sy = Math.round(sy_center - (panY / 100) * maxPanY);
       
       // Pan X: panX is from -100 (left) to 100 (right)
       // Moving slider right (positive) should move person right, which means crop window moves left (sx decreases)
       const maxPanX = sx_center;
-      let sx = sx_center - (panX / 100) * maxPanX;
+      let sx = Math.round(sx_center - (panX / 100) * maxPanX);
 
       // Clamp sx to ensure we don't crop outside the image
       sx = Math.max(0, Math.min(sx, img.width - sWidth));
@@ -60,11 +60,22 @@ const cropImageToAspectRatio = (base64: string, targetRatio: number, zoom: numbe
       // Clamp sy to ensure we don't crop outside the image
       sy = Math.max(0, Math.min(sy, img.height - sHeight));
 
-      canvas.width = forceWidth || sWidth;
-      canvas.height = forceHeight || sHeight;
+      canvas.width = Math.round(forceWidth || sWidth);
+      canvas.height = Math.round(forceHeight || sHeight);
 
+      // Configure high-quality scaling on the context
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      // Draw using integer coordinates to prevent subpixel antialiasing blur
       ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL('image/jpeg', 0.95));
+      
+      // Detect MIME type and apply highest encoding quality possible (0.98 or PNG)
+      const mimeTypeMatch = base64.match(/^data:([^;]+);base64,/);
+      const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/jpeg';
+      const quality = mimeType === 'image/png' ? undefined : 0.98;
+
+      resolve(canvas.toDataURL(mimeType, quality));
     };
     img.onerror = reject;
     img.src = base64;
@@ -107,24 +118,20 @@ export const IdPhotoTab: React.FC = () => {
 
     const cleanSize = appliedSizeOption.replace(' cm', '');
     let targetRatio = 1;
-    let targetWidthPx = 0;
-    let targetHeightPx = 0;
-    const MM_TO_INCH = 1 / 25.4;
-    const DPI = 400;
 
     switch (cleanSize) {
-      case '5x5': targetRatio = 1; targetWidthPx = Math.round(50 * MM_TO_INCH * DPI); targetHeightPx = Math.round(50 * MM_TO_INCH * DPI); break;
-      case '2x3': targetRatio = 2 / 3; targetWidthPx = Math.round(20 * MM_TO_INCH * DPI); targetHeightPx = Math.round(30 * MM_TO_INCH * DPI); break;
-      case '3x4': targetRatio = 3 / 4; targetWidthPx = Math.round(30 * MM_TO_INCH * DPI); targetHeightPx = Math.round(40 * MM_TO_INCH * DPI); break;
-      case '4x6': targetRatio = 4 / 6; targetWidthPx = Math.round(40 * MM_TO_INCH * DPI); targetHeightPx = Math.round(60 * MM_TO_INCH * DPI); break;
-      case '3.5x4.5': targetRatio = 3.5 / 4.5; targetWidthPx = Math.round(35 * MM_TO_INCH * DPI); targetHeightPx = Math.round(45 * MM_TO_INCH * DPI); break;
-      case '3.3x4.8': targetRatio = 3.3 / 4.8; targetWidthPx = Math.round(33 * MM_TO_INCH * DPI); targetHeightPx = Math.round(48 * MM_TO_INCH * DPI); break;
-      case '6x9': targetRatio = 6 / 9; targetWidthPx = Math.round(60 * MM_TO_INCH * DPI); targetHeightPx = Math.round(90 * MM_TO_INCH * DPI); break;
-      case '5x7': targetRatio = 5 / 7; targetWidthPx = Math.round(50 * MM_TO_INCH * DPI); targetHeightPx = Math.round(70 * MM_TO_INCH * DPI); break;
+      case '5x5': targetRatio = 1; break;
+      case '2x3': targetRatio = 2 / 3; break;
+      case '3x4': targetRatio = 3 / 4; break;
+      case '4x6': targetRatio = 4 / 6; break;
+      case '3.5x4.5': targetRatio = 3.5 / 4.5; break;
+      case '3.3x4.8': targetRatio = 3.3 / 4.8; break;
+      case '6x9': targetRatio = 6 / 9; break;
+      case '5x7': targetRatio = 5 / 7; break;
       case 'Gốc': targetRatio = 0; break;
     }
 
-    cropImageToAspectRatio(rawAiImage, targetRatio, faceZoom, verticalPan, targetWidthPx || undefined, targetHeightPx || undefined, horizontalPan)
+    cropImageToAspectRatio(rawAiImage, targetRatio, faceZoom, verticalPan, undefined, undefined, horizontalPan)
       .then(cropped => {
         setEditedResults(prev => {
           if (!prev || prev.length === 0) return prev;
@@ -299,26 +306,9 @@ export const IdPhotoTab: React.FC = () => {
 
       if (result.imageUrl) {
         setRawAiImage(result.imageUrl);
-        
-        const cleanSize = sizeOption.replace(' cm', '');
-        let tw = 0;
-        let th = 0;
-        const MM_TO_INCH = 1 / 25.4;
-        const DPI = 400;
-        
-        switch (cleanSize) {
-          case '5x5': tw = Math.round(50 * MM_TO_INCH * DPI); th = Math.round(50 * MM_TO_INCH * DPI); break;
-          case '2x3': tw = Math.round(20 * MM_TO_INCH * DPI); th = Math.round(30 * MM_TO_INCH * DPI); break;
-          case '3x4': tw = Math.round(30 * MM_TO_INCH * DPI); th = Math.round(40 * MM_TO_INCH * DPI); break;
-          case '4x6': tw = Math.round(40 * MM_TO_INCH * DPI); th = Math.round(60 * MM_TO_INCH * DPI); break;
-          case '3.5x4.5': tw = Math.round(35 * MM_TO_INCH * DPI); th = Math.round(45 * MM_TO_INCH * DPI); break;
-          case '3.3x4.8': tw = Math.round(33 * MM_TO_INCH * DPI); th = Math.round(48 * MM_TO_INCH * DPI); break;
-          case '6x9': tw = Math.round(60 * MM_TO_INCH * DPI); th = Math.round(90 * MM_TO_INCH * DPI); break;
-          case '5x7': tw = Math.round(50 * MM_TO_INCH * DPI); th = Math.round(70 * MM_TO_INCH * DPI); break;
-        }
 
         try {
-          const croppedBase64 = await cropImageToAspectRatio(result.imageUrl, targetRatio, faceZoom, verticalPan, tw || undefined, th || undefined, horizontalPan);
+          const croppedBase64 = await cropImageToAspectRatio(result.imageUrl, targetRatio, faceZoom, verticalPan, undefined, undefined, horizontalPan);
           result.imageUrl = croppedBase64;
         } catch (cropErr) {
           console.error("Error cropping image:", cropErr);
@@ -363,21 +353,16 @@ export const IdPhotoTab: React.FC = () => {
     try {
       const cleanSize = sizeOption.replace(' cm', '');
       let targetRatio = 1;
-      let targetWidthPx = 0;
-      let targetHeightPx = 0;
-      
-      const MM_TO_INCH = 1 / 25.4;
-      const DPI = 400;
 
       switch (cleanSize) {
-        case '5x5': targetRatio = 1; targetWidthPx = Math.round(50 * MM_TO_INCH * DPI); targetHeightPx = Math.round(50 * MM_TO_INCH * DPI); break;
-        case '2x3': targetRatio = 2 / 3; targetWidthPx = Math.round(20 * MM_TO_INCH * DPI); targetHeightPx = Math.round(30 * MM_TO_INCH * DPI); break;
-        case '3x4': targetRatio = 3 / 4; targetWidthPx = Math.round(30 * MM_TO_INCH * DPI); targetHeightPx = Math.round(40 * MM_TO_INCH * DPI); break;
-        case '4x6': targetRatio = 4 / 6; targetWidthPx = Math.round(40 * MM_TO_INCH * DPI); targetHeightPx = Math.round(60 * MM_TO_INCH * DPI); break;
-        case '3.5x4.5': targetRatio = 3.5 / 4.5; targetWidthPx = Math.round(35 * MM_TO_INCH * DPI); targetHeightPx = Math.round(45 * MM_TO_INCH * DPI); break;
-        case '3.3x4.8': targetRatio = 3.3 / 4.8; targetWidthPx = Math.round(33 * MM_TO_INCH * DPI); targetHeightPx = Math.round(48 * MM_TO_INCH * DPI); break;
-        case '6x9': targetRatio = 6 / 9; targetWidthPx = Math.round(60 * MM_TO_INCH * DPI); targetHeightPx = Math.round(90 * MM_TO_INCH * DPI); break;
-        case '5x7': targetRatio = 5 / 7; targetWidthPx = Math.round(50 * MM_TO_INCH * DPI); targetHeightPx = Math.round(70 * MM_TO_INCH * DPI); break;
+        case '5x5': targetRatio = 1; break;
+        case '2x3': targetRatio = 2 / 3; break;
+        case '3x4': targetRatio = 3 / 4; break;
+        case '4x6': targetRatio = 4 / 6; break;
+        case '3.5x4.5': targetRatio = 3.5 / 4.5; break;
+        case '3.3x4.8': targetRatio = 3.3 / 4.8; break;
+        case '6x9': targetRatio = 6 / 9; break;
+        case '5x7': targetRatio = 5 / 7; break;
         case 'Gốc': targetRatio = 0; break;
       }
 
@@ -385,7 +370,7 @@ export const IdPhotoTab: React.FC = () => {
       
       let croppedBase64 = originalImage.base64;
       try {
-        croppedBase64 = await cropImageToAspectRatio(originalImage.base64, targetRatio, faceZoom, verticalPan, targetWidthPx || undefined, targetHeightPx || undefined, horizontalPan);
+        croppedBase64 = await cropImageToAspectRatio(originalImage.base64, targetRatio, faceZoom, verticalPan, undefined, undefined, horizontalPan);
       } catch (cropErr) {
         console.error("Error cropping image:", cropErr);
       }

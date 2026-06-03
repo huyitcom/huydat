@@ -65,11 +65,11 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ originalImageUrl, 
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('Canvas context not available');
 
-      // 13x18 cm at 300 DPI
-      const DPI = 300;
+      // 13x18 cm at 1300 DPI for maximum synchronization and sharpness
+      const DPI = 1300;
       const MM_TO_INCH = 1 / 25.4;
-      const sheetWidthPx = Math.round(130 * MM_TO_INCH * DPI); // ~1535
-      const sheetHeightPx = Math.round(180 * MM_TO_INCH * DPI); // ~2126
+      const sheetWidthPx = Math.round(130 * MM_TO_INCH * DPI); // ~6653 px
+      const sheetHeightPx = Math.round(180 * MM_TO_INCH * DPI); // ~9213 px
 
       canvas.width = sheetWidthPx;
       canvas.height = sheetHeightPx;
@@ -143,13 +143,13 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ originalImageUrl, 
         }
       }
 
-      // Download with 300 DPI
+      // Download with 1300 DPI for complete alignment and supreme print detail
       const sheetDataUrl = canvas.toDataURL('image/jpeg', 0.98);
-      const highDpiSheetUrl = changeDpi(sheetDataUrl, 300);
+      const highDpiSheetUrl = changeDpi(sheetDataUrl, 1300);
       
       const link = document.createElement('a');
       link.href = highDpiSheetUrl;
-      link.download = `id-photo-sheet-13x18-${cleanSize}-${Date.now()}.jpg`;
+      link.download = `id-photo-sheet-13x18-${cleanSize}-1300dpi-${Date.now()}.jpg`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -301,45 +301,60 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ originalImageUrl, 
             .animate-fade-in { animation: fade-in 0.2s ease-out; }
           `}</style>
           <div
-            className="relative max-w-4xl max-h-[90vh] bg-gray-950 p-2 rounded-lg shadow-2xl border border-slate-700"
+            className="relative max-w-4xl max-h-[95vh] w-full bg-gray-950 rounded-xl overflow-hidden shadow-2xl border border-slate-800 flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <img src={zoomedImage} alt="Zoomed result" className="object-contain w-full h-full max-h-[calc(90vh-1rem)] rounded" />
-            <DownloadButton imageUrl={zoomedImage} />
-            {sizeOption && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCreateSheet(zoomedImage);
-                }}
-                disabled={isGeneratingSheet}
-                className="absolute top-4 left-4 z-10 flex items-center bg-slate-800/80 text-white font-semibold py-2 px-4 border border-slate-600 rounded-lg shadow-lg transition-all backdrop-blur-sm hover:bg-purple-600 hover:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
-              >
-                {isGeneratingSheet ? (
-                  <span className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Đang tạo...
-                  </span>
-                ) : (
-                  <span className="flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                    </svg>
-                    Tạo Sheet 13x18cm ({sizeOption?.replace(' cm', '') === '3x4' ? '8 ảnh' : '4 ảnh'})
-                  </span>
+            {/* Modal Control Bar */}
+            <div className="bg-slate-900 border-b border-gray-800 px-4 py-3 flex flex-wrap items-center justify-between gap-3 select-none">
+              <div className="flex items-center gap-2">
+                {sizeOption && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCreateSheet(zoomedImage);
+                    }}
+                    disabled={isGeneratingSheet}
+                    className="flex items-center bg-purple-600 hover:bg-purple-500 border border-purple-500 text-white font-semibold py-2 px-3 sm:px-4 rounded-lg shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 text-xs sm:text-sm active:scale-95"
+                  >
+                    {isGeneratingSheet ? (
+                      <span className="flex items-center">
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Đang tạo Sheet...
+                      </span>
+                    ) : (
+                      <span className="flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                        </svg>
+                        Tạo Sheet 13x18cm ({sizeOption?.replace(' cm', '') === '3x4' ? '8 ảnh' : '4 ảnh'})
+                      </span>
+                    )}
+                  </button>
                 )}
-              </button>
-            )}
-            <button
-              onClick={() => setZoomedImage(null)}
-              className="absolute -top-5 -right-5 z-20 h-10 w-10 flex items-center justify-center bg-slate-600 text-white rounded-full hover:bg-red-500 transition-colors text-2xl font-bold leading-none"
-              aria-label="Đóng chế độ xem ảnh phóng to"
-            >
-              &times;
-            </button>
+              </div>
+
+              <div className="flex items-center gap-2 ml-auto">
+                <DownloadButton imageUrl={zoomedImage} sizeOption={sizeOption} />
+                <button
+                  onClick={() => setZoomedImage(null)}
+                  className="bg-slate-800 hover:bg-red-600 border border-slate-700 text-slate-300 hover:text-white p-2 rounded-lg transition-colors inline-flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-red-500"
+                  aria-label="Đóng"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Image Display Area */}
+            <div className="flex-1 overflow-auto bg-[#030712] p-4 flex items-center justify-center min-h-[300px]">
+              <img src={zoomedImage} alt="Zoomed result" className="object-contain max-h-[75vh] max-w-full rounded-md shadow-lg" />
+            </div>
           </div>
         </div>
       )}
