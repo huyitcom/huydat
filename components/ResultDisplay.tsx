@@ -79,6 +79,8 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ originalImageUrl, 
       ctx.fillRect(0, 0, sheetWidthPx, sheetHeightPx);
 
       const cleanSize = sizeOption.replace(' cm', '');
+      const rotateList = ['2x3', '4x6', '3.5x4.5', '3.3x4.8'];
+      const shouldRotate = rotateList.includes(cleanSize);
 
       // Determine photo physical size
       let photoWidthMm = 40;
@@ -92,8 +94,8 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ originalImageUrl, 
           photoHeightMm = 50; 
           break;
         case '2x3': 
-          photoWidthMm = 20; 
-          photoHeightMm = 30; 
+          photoWidthMm = 30; 
+          photoHeightMm = 20; 
           break;
         case '3x4': 
           photoWidthMm = 30; 
@@ -102,16 +104,16 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ originalImageUrl, 
           numCols = 4;
           break;
         case '4x6': 
-          photoWidthMm = 40; 
-          photoHeightMm = 60; 
+          photoWidthMm = 60; 
+          photoHeightMm = 40; 
           break;
         case '3.5x4.5': 
-          photoWidthMm = 35; 
-          photoHeightMm = 45; 
+          photoWidthMm = 45; 
+          photoHeightMm = 35; 
           break;
         case '3.3x4.8': 
-          photoWidthMm = 33; 
-          photoHeightMm = 48; 
+          photoWidthMm = 48; 
+          photoHeightMm = 33; 
           break;
         case '6x9': 
           photoWidthMm = 60; 
@@ -149,10 +151,18 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ originalImageUrl, 
           const x = startX + col * (photoWidthPx + gapPx);
           const y = startY + row * (photoHeightPx + gapPx);
           
-          ctx.drawImage(img, x, y, photoWidthPx, photoHeightPx);
+          if (shouldRotate) {
+            ctx.save();
+            ctx.translate(x + photoWidthPx / 2, y + photoHeightPx / 2);
+            ctx.rotate(Math.PI / 2); // Rotate 90 degrees clockwise
+            ctx.drawImage(img, -photoHeightPx / 2, -photoWidthPx / 2, photoHeightPx, photoWidthPx);
+            ctx.restore();
+          } else {
+            ctx.drawImage(img, x, y, photoWidthPx, photoHeightPx);
+          }
           
           // Draw a clear, solid cut line/border (approx 0.25mm thickness in high-DPI space)
-          ctx.strokeStyle = '#555555'; // Darker gray for clear visibility
+          ctx.strokeStyle = '#cccccc'; // Light gray border for clean cut lines as requested
           ctx.lineWidth = Math.round(0.25 * MM_TO_INCH * DPI); // ~13 pixels high-DPI thickness
           ctx.strokeRect(x, y, photoWidthPx, photoHeightPx);
 
