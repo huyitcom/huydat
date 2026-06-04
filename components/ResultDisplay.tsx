@@ -79,8 +79,6 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ originalImageUrl, 
       ctx.fillRect(0, 0, sheetWidthPx, sheetHeightPx);
 
       const cleanSize = sizeOption.replace(' cm', '');
-      const rotateList = ['2x3', '3x4', '4x6', '3.5x4.5', '3.3x4.8'];
-      const shouldRotate = rotateList.includes(cleanSize);
 
       // Determine photo physical size
       let photoWidthMm = 40;
@@ -89,19 +87,40 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ originalImageUrl, 
       let numCols = 2;
 
       switch (cleanSize) {
-        case '5x5': photoWidthMm = 50; photoHeightMm = 50; break;
-        case '2x3': photoWidthMm = 30; photoHeightMm = 20; break;
-        case '3x4': 
-          photoWidthMm = 40; 
-          photoHeightMm = 30; 
-          numRows = 4;
-          numCols = 2;
+        case '5x5': 
+          photoWidthMm = 50; 
+          photoHeightMm = 50; 
           break;
-        case '4x6': photoWidthMm = 60; photoHeightMm = 40; break;
-        case '3.5x4.5': photoWidthMm = 45; photoHeightMm = 35; break;
-        case '3.3x4.8': photoWidthMm = 48; photoHeightMm = 33; break;
-        case '6x9': photoWidthMm = 60; photoHeightMm = 90; break;
-        case '5x7': photoWidthMm = 50; photoHeightMm = 70; break;
+        case '2x3': 
+          photoWidthMm = 20; 
+          photoHeightMm = 30; 
+          break;
+        case '3x4': 
+          photoWidthMm = 30; 
+          photoHeightMm = 40; 
+          numRows = 2;
+          numCols = 4;
+          break;
+        case '4x6': 
+          photoWidthMm = 40; 
+          photoHeightMm = 60; 
+          break;
+        case '3.5x4.5': 
+          photoWidthMm = 35; 
+          photoHeightMm = 45; 
+          break;
+        case '3.3x4.8': 
+          photoWidthMm = 33; 
+          photoHeightMm = 48; 
+          break;
+        case '6x9': 
+          photoWidthMm = 60; 
+          photoHeightMm = 90; 
+          break;
+        case '5x7': 
+          photoWidthMm = 50; 
+          photoHeightMm = 70; 
+          break;
       }
 
       const photoWidthPx = Math.round(photoWidthMm * MM_TO_INCH * DPI);
@@ -119,27 +138,25 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ originalImageUrl, 
       const startX = (sheetWidthPx - totalGridWidth) / 2;
       const startY = marginTopPx;
 
+      let drawCount = 0;
       // Draw photos
       for (let row = 0; row < numRows; row++) {
         for (let col = 0; col < numCols; col++) {
+          if (cleanSize === '3x4' && drawCount >= 8) {
+            break;
+          }
+
           const x = startX + col * (photoWidthPx + gapPx);
           const y = startY + row * (photoHeightPx + gapPx);
           
-          if (shouldRotate) {
-            ctx.save();
-            ctx.translate(x + photoWidthPx / 2, y + photoHeightPx / 2);
-            ctx.rotate(Math.PI / 2); // Rotate 90 degrees clockwise
-            // Since we rotated 90deg, width becomes height and height becomes width
-            ctx.drawImage(img, -photoHeightPx / 2, -photoWidthPx / 2, photoHeightPx, photoWidthPx);
-            ctx.restore();
-          } else {
-            ctx.drawImage(img, x, y, photoWidthPx, photoHeightPx);
-          }
+          ctx.drawImage(img, x, y, photoWidthPx, photoHeightPx);
           
-          // Draw a thin cut line/border
-          ctx.strokeStyle = '#888888'; // Darker gray for border
-          ctx.lineWidth = 1;
+          // Draw a clear, solid cut line/border (approx 0.25mm thickness in high-DPI space)
+          ctx.strokeStyle = '#555555'; // Darker gray for clear visibility
+          ctx.lineWidth = Math.round(0.25 * MM_TO_INCH * DPI); // ~13 pixels high-DPI thickness
           ctx.strokeRect(x, y, photoWidthPx, photoHeightPx);
+
+          drawCount++;
         }
       }
 
