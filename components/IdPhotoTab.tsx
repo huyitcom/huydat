@@ -82,6 +82,68 @@ const cropImageToAspectRatio = (base64: string, targetRatio: number, zoom: numbe
   });
 };
 
+const NumericInput: React.FC<{
+  value: number;
+  onChange: (val: number) => void;
+  min: number;
+  max: number;
+  step?: number;
+  suffix?: string;
+  decimals?: number;
+}> = ({ value, onChange, min, max, step = 1, suffix, decimals }) => {
+  const formatVal = (v: number) => (decimals !== undefined ? v.toFixed(decimals) : String(v));
+  const [inputVal, setInputVal] = useState<string>(formatVal(value));
+  const [isFocused, setIsFocused] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!isFocused) {
+      setInputVal(formatVal(value));
+    }
+  }, [value, isFocused, decimals]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    setInputVal(raw);
+    const parsed = parseFloat(raw);
+    if (!isNaN(parsed)) {
+      const clamped = Math.max(min, Math.min(max, parsed));
+      onChange(clamped);
+    }
+  };
+
+  const handleBlur = () => {
+    setIsFocused(false);
+    const parsed = parseFloat(inputVal);
+    if (isNaN(parsed)) {
+      setInputVal(formatVal(value));
+    } else {
+      const clamped = Math.max(min, Math.min(max, parsed));
+      onChange(clamped);
+      setInputVal(formatVal(clamped));
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-1">
+      <input
+        type="number"
+        min={min}
+        max={max}
+        step={step}
+        value={isFocused ? inputVal : formatVal(value)}
+        onFocus={() => {
+          setIsFocused(true);
+          setInputVal(String(value));
+        }}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        className="w-20 bg-gray-800 border border-gray-700 rounded-md px-2 py-0.5 text-right text-sm text-white focus:outline-none focus:border-purple-500 transition-colors"
+      />
+      {suffix && <span className="text-gray-400 text-sm">{suffix}</span>}
+    </div>
+  );
+};
+
 export const IdPhotoTab: React.FC = () => {
   const [originalImage, setOriginalImage] = useState<{ file: File | null; base64: string | null }>({
     file: null,
@@ -182,10 +244,10 @@ export const IdPhotoTab: React.FC = () => {
           clothingPrompt = 'Replace the outfit with a professional business suit for women.';
           break;
         case 'Sơ Mi Nam':
-          clothingPrompt = 'Replace the outfit with a formal button-down shirt for men.';
+          clothingPrompt = 'Replace the outfit with a white formal button-down shirt for men.';
           break;
         case 'Sơ Mi Nữ':
-          clothingPrompt = 'Replace the outfit with a formal button-down shirt for women.';
+          clothingPrompt = 'Replace the outfit with a white formal button-down shirt for women.';
           break;
         case 'Polo Trắng':
           clothingPrompt = 'Replace the outfit with a white polo shirt.';
@@ -478,15 +540,23 @@ export const IdPhotoTab: React.FC = () => {
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <div className="flex justify-between text-sm mb-2">
+                <div className="flex justify-between items-center text-sm mb-2">
                   <span className="text-white">Phóng To (Zoom)</span>
-                  <span className="text-gray-400">{faceZoom.toFixed(2)}x</span>
+                  <NumericInput
+                    value={faceZoom}
+                    onChange={setFaceZoom}
+                    min={1}
+                    max={2}
+                    step={0.01}
+                    decimals={2}
+                    suffix="x"
+                  />
                 </div>
                 <input
                   type="range"
                   min="1"
                   max="2"
-                  step="0.05"
+                  step="0.01"
                   value={faceZoom}
                   onChange={(e) => setFaceZoom(parseFloat(e.target.value))}
                   className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
@@ -494,15 +564,22 @@ export const IdPhotoTab: React.FC = () => {
               </div>
 
               <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-white">Dịch Chuyển Lên/Xuống</span>
-                  <span className="text-gray-400">{verticalPan}%</span>
+                <div className="flex justify-between items-center text-sm mb-2">
+                  <span className="text-white">Lên/Xuống</span>
+                  <NumericInput
+                    value={verticalPan}
+                    onChange={setVerticalPan}
+                    min={-100}
+                    max={100}
+                    step={1}
+                    suffix="%"
+                  />
                 </div>
                 <input
                   type="range"
                   min="-100"
                   max="100"
-                  step="5"
+                  step="1"
                   value={verticalPan}
                   onChange={(e) => setVerticalPan(parseInt(e.target.value))}
                   className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
@@ -510,15 +587,22 @@ export const IdPhotoTab: React.FC = () => {
               </div>
 
               <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-white">Dịch Chuyển Trái/Phải</span>
-                  <span className="text-gray-400">{horizontalPan}%</span>
+                <div className="flex justify-between items-center text-sm mb-2">
+                  <span className="text-white">Trái/Phải</span>
+                  <NumericInput
+                    value={horizontalPan}
+                    onChange={setHorizontalPan}
+                    min={-100}
+                    max={100}
+                    step={1}
+                    suffix="%"
+                  />
                 </div>
                 <input
                   type="range"
                   min="-100"
                   max="100"
-                  step="5"
+                  step="1"
                   value={horizontalPan}
                   onChange={(e) => setHorizontalPan(parseInt(e.target.value))}
                   className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
@@ -526,7 +610,7 @@ export const IdPhotoTab: React.FC = () => {
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-4 text-center">
-              * Sử dụng thanh trượt để căn chỉnh khuôn mặt khớp với các đường gióng tiêu chuẩn trên ảnh.
+              * Sử dụng thanh trượt hoặc nhập trực tiếp thông số để căn chỉnh khuôn mặt khớp với các đường gióng tiêu chuẩn trên ảnh.
             </p>
           </div>
         )}
